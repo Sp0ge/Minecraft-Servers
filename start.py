@@ -15,7 +15,7 @@ secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (p/'forwarding.secret').write_text(secret)
 (p/'velocity.toml').write_text('''config-version = "2.7"
 bind = "0.0.0.0:25565"
-motd = "Minecraft Servers: Pillars + Survival"
+motd = "<green><bold>KiwyClub</bold> <gray>Survival • Pillars • Parkour • PvP"
 show-max-players = 64
 online-mode = false
 force-key-authentication = false
@@ -35,7 +35,7 @@ try = ["lobby"]
 [advanced]
 compression-threshold = 256
 compression-level = -1
-login-ratelimit = 3000
+login-ratelimit = 0
 connection-timeout = 5000
 read-timeout = 30000
 haproxy-protocol = false

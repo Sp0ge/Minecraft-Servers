@@ -62,7 +62,7 @@ public class NetworkProxy {
       }
       public List<String> suggest(Invocation invocation){return List.of("lobby","survival","parkour","pillars","pillars_1","pillars_2","pillars_3","pillars_4","pillars_5");}
     });
-    proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("help").plugin(this).build(),new SimpleCommand(){public void execute(Invocation i){if(i.source() instanceof Player p)help(p);}});
+    proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("help").plugin(this).build(),new SimpleCommand(){public void execute(Invocation i){if(i.source() instanceof Player p)ClubStyle.help(p,i.arguments().length>0?i.arguments()[0]:"main");} public List<String> suggest(Invocation i){return ClubStyle.TOPICS;}});
     http=HttpServer.create(new InetSocketAddress("0.0.0.0",8080),0);
     http.createContext("/",x->{
       if(!Objects.equals(x.getRequestHeaders().getFirst("Authorization"),"Bearer "+token)){reply(x,403,"{}");return;}
@@ -103,19 +103,7 @@ public class NetworkProxy {
       if(!drained.contains("survival"))post("survival:8081","/duel/restore",body);
     }
   }
-  void help(Player p){for(String line:List.of(
-    "Режимы и команды Minecraft Servers (максимум 64 игрока)",
-    "/server lobby — лобби; книга «Команды и режимы» и компас.",
-    "/register <пароль> <пароль>, /login <пароль> — регистрация и вход в lobby.",
-    "/changepassword <старый> <новый>, /logout — управление входом в lobby.",
-    "/server pillars — свободная арена; /server pillars_1 … pillars_5 — конкретная (16 игроков). Пустые арены сбрасываются; одна всегда готова.",
-    "/server survival — выживание 26.3. /home — последняя кровать; /tpa <игрок>, /tpaccept, /tpdeny — телепортация по согласию (60 секунд).",
-    "Survival: первый спаун в квадрате 64×64 чанка; чат в радиусе 128 блоков. Заходы и смерти видны всему survival.",
-    "Survival: перезапуск в 05:00 МСК с предупреждениями за 20/10/5 минут; вайп каждые 3 месяца с новым сидом.",
-    "/server parkour — общий случайный паркур, обновляется каждый час; /checkpoint — к контрольной точке, /restart — к началу.",
-    "/pvp <игрок>, /pvpaccept, /pvpdeny — дуэль из survival; вызов действует 60 секунд. Арена отдельная, вещи копируются.",
-    "После смерти, выхода или 10 минут дуэли — возврат; исходный survival-инвентарь восстанавливается целиком. /pvpleave — сдаться.",
-    "/help — эта справка. Команды режима доступны только в нём."))message(p,line);}
+  void help(Player p){ClubStyle.help(p,"main");}
   String current(Player p){return p.getCurrentServer().map(s->s.getServerInfo().getName()).orElse("lobby");}
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help"));
@@ -127,13 +115,21 @@ public class NetworkProxy {
     return result;
   }
   void tab(Player p){
-    if(!p.isActive())return;String name=current(p);
-    p.sendPlayerListHeaderAndFooter(Component.text("Minecraft Servers",NamedTextColor.GOLD)
-      .append(Component.text("\nСервер: "+name,NamedTextColor.AQUA)),
-      Component.text("В сети: "+proxy.getPlayerCount()+" / 64\n/server — выбор сервера",NamedTextColor.GRAY));
+    if(!p.isActive())return;String name=current(p);int local=p.getCurrentServer().map(s->s.getServer().getPlayersConnected().size()).orElse(0);
+    p.sendPlayerListHeaderAndFooter(Component.text("\n  ").append(ClubStyle.BRAND).append(Component.text("  \n",NamedTextColor.WHITE))
+      .append(Component.text("Survival  •  Pillars  •  Parkour  •  PvP\n",ClubStyle.MUTED))
+      .append(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━\n",ClubStyle.LINE))
+      .append(Component.text("Сейчас: ",ClubStyle.MUTED)).append(Component.text(ClubStyle.label(name),ClubStyle.color(name)))
+      .append(Component.text("  ·  "+name+"\n",NamedTextColor.DARK_GRAY)),
+      Component.text("\nВ сети: ",ClubStyle.MUTED).append(Component.text(proxy.getPlayerCount()+" / 64",ClubStyle.GREEN))
+      .append(Component.text("    Здесь: ",ClubStyle.MUTED)).append(Component.text(local,NamedTextColor.WHITE))
+      .append(Component.text("\nПинг: ",ClubStyle.MUTED)).append(Component.text(Math.max(0,p.getPing())+" мс",NamedTextColor.WHITE))
+      .append(Component.text("\n/server",ClubStyle.GREEN)).append(Component.text(" — режимы   •   ",ClubStyle.MUTED))
+      .append(Component.text("/help",ClubStyle.GREEN)).append(Component.text(" — справка\n",ClubStyle.MUTED))
+      .append(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━\n",ClubStyle.LINE)));
     for(var entry:p.getTabList().getEntries())proxy.getPlayer(entry.getProfile().getId()).ifPresent(other->
       entry.setDisplayName(Component.text(other.getUsername(),NamedTextColor.WHITE)
-        .append(Component.text(" ["+current(other)+"]",NamedTextColor.DARK_GRAY))));
+        .append(Component.text("  •  ",ClubStyle.MUTED)).append(Component.text(ClubStyle.label(current(other)),ClubStyle.color(current(other))))));
   }
   @Subscribe(order=PostOrder.LAST) public void login(LoginEvent event){
     if(event.getResult().isAllowed()&&!slots.acquire(event.getPlayer()))event.setResult(ResultedEvent.ComponentResult.denied(Component.text("Сеть заполнена: максимум 64 игрока. Повторите вход позже.")));
@@ -194,7 +190,7 @@ public class NetworkProxy {
     if(!p.hasPermission("network.admin")&&!commands(p).contains(root)&&(root.contains(":")||proxy.getCommandManager().hasCommand(root))){
       event.setResult(CommandExecuteEvent.CommandResult.denied());message(p,"Команда недоступна. /server — выбор сервера.");return;
     }
-    if(root.equals("help")){event.setResult(CommandExecuteEvent.CommandResult.denied());help(p);return;}
+    if(root.equals("help")){event.setResult(CommandExecuteEvent.CommandResult.denied());ClubStyle.help(p,parts.length>1?parts[1]:"main");return;}
     if(parts[0].equalsIgnoreCase("logout"))authenticated.remove(p.getUniqueId());
     if(parts[0].equalsIgnoreCase("server")){
       event.setResult(CommandExecuteEvent.CommandResult.denied());
