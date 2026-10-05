@@ -22,12 +22,8 @@ if role=='pillars' and not (root/'world/level.dat').exists():
 if role=='lobby':
  shutil.copy('/assets/AuthMe.jar',root/'plugins/AuthMe.jar')
  config=root/'plugins/AuthMe/config.yml';config.parent.mkdir(exist_ok=True)
- if not config.exists():config.write_text('settings:\n    registration:\n        dialog:\n            preJoin:\n                enable: false\n            postJoin:\n                enable: false\n')
- else:
-  text=config.read_text()
-  text=re.sub(r'(preJoin:\s*\n(?:[ \t]*#[^\n]*\n)*[ \t]*enable:) true',r'\1 false',text)
-  text=re.sub(r'(postJoin:\s*\n(?:[ \t]*#[^\n]*\n)*[ \t]*enable:) true',r'\1 false',text)
-  config.write_text(text)
+ from authme_config import configure
+ config.write_text(configure(config.read_text() if config.exists() else ''))
 seed=''
 if role=='survival':
  metadata=root/'season.json'
@@ -85,7 +81,7 @@ difficulty=normal
 enable-rcon=true
 rcon.port=25575
 rcon.password='''+pathlib.Path('/secrets/api-token').read_text().strip()+'''
-motd=Minecraft Servers - '''+role+'''
+motd=KiwyClub - '''+role+'''
 max-tick-time=120000
 sync-chunk-writes=true
 ''')
