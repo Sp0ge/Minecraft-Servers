@@ -4,7 +4,7 @@ shutil.copy('/opt/network-proxy.jar',p/'plugins/NetworkProxy.jar')
 for plugin in ('ViaVersion','ViaBackwards'):
  shutil.copy('/assets/'+plugin+'.jar',p/'plugins'/ (plugin+'.jar'))
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
-block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 777\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
+block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 777\n  parkour: 777\n  pvp: 777\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
 text=via.read_text() if via.exists() else ''
 if 'velocity-servers:' in text:text=re.sub(r'(?m)^velocity-servers:\n(?:[ \t]+[^\n]*\n)*',block,text)
 else:text+='\n'+block
@@ -16,7 +16,7 @@ secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (p/'velocity.toml').write_text('''config-version = "2.7"
 bind = "0.0.0.0:25565"
 motd = "Minecraft Servers: Pillars + Survival"
-show-max-players = 120
+show-max-players = 64
 online-mode = false
 force-key-authentication = false
 player-info-forwarding-mode = "modern"
@@ -28,6 +28,8 @@ enable-player-address-logging = false
 [servers]
 lobby = "lobby:25565"
 survival = "survival:25565"
+parkour = "parkour:25565"
+pvp = "pvp:25565"
 try = ["lobby"]
 [forced-hosts]
 [advanced]
