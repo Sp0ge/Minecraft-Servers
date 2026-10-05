@@ -12,6 +12,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.inventory.ItemStack;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import com.google.gson.*;
 import com.sun.net.httpserver.*;
 import java.net.*;
@@ -24,6 +27,8 @@ public class Backend extends JavaPlugin implements Listener {
   String role=System.getenv().getOrDefault("ROLE","survival"), token;
   final Gson json=new Gson(); HttpServer http; ExecutorService httpExecutor; boolean visited=false, accepting=true;
   volatile String snapshot="{}"; final Map<UUID,Request> requests=new HashMap<>();SurvivalRules rules;ParkourRules parkour;DuelRules duels;
+  static final String MENU_TITLE="§a§lKiwyClub §8• §0Режимы";
+  ItemStack guidebook;
   record Request(UUID sender,long expires) {}
   public ChunkGenerator getDefaultWorldGenerator(String name,String id) {
     return new ChunkGenerator() {
@@ -139,9 +144,17 @@ public class Backend extends JavaPlugin implements Listener {
     Player p=e.getPlayer();p.teleport(getServer().getWorlds().getFirst().getSpawnLocation());p.setGameMode(GameMode.ADVENTURE);
     for(Player other:getServer().getOnlinePlayers())if(other!=p){p.hidePlayer(this,other);other.hidePlayer(this,p);}
     getServer().getScheduler().runTaskLater(this,()->lobbyKit(p),40);
-    p.sendMessage("После /register или /login: /server pillars, /server survival. Компас открывает выбор.");
+    p.sendMessage("§a§lKiwyClub §8» §fДобро пожаловать в клуб!");
+    p.sendMessage("§7Войди через §a/register §7или §a/login§7. Книга и §a/help §7помогут выбрать режим.");
   }}
-  void lobbyKit(Player p){p.getInventory().setItem(0,Guidebook.create());p.getInventory().setItem(4,new ItemStack(Material.COMPASS));}
+  ItemStack guide(){if(guidebook==null)guidebook=Guidebook.create();return guidebook.clone();}
+  ItemStack item(Material material,String name,NamedTextColor color,String... description){
+    ItemStack item=new ItemStack(material);var meta=item.getItemMeta();
+    meta.displayName(Component.text(name,color).decorate(TextDecoration.BOLD).decoration(TextDecoration.ITALIC,false));
+    meta.lore(Arrays.stream(description).map(line->Component.text(line,NamedTextColor.GRAY).decoration(TextDecoration.ITALIC,false)).toList());
+    item.setItemMeta(meta);return item;
+  }
+  void lobbyKit(Player p){p.getInventory().setItem(0,guide());p.getInventory().setItem(4,item(Material.COMPASS,"Выбор режима",NamedTextColor.GREEN,"KiwyClub","Нажми, чтобы выбрать приключение"));}
   @EventHandler public void drop(PlayerDropItemEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void drag(org.bukkit.event.inventory.InventoryDragEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void damage(EntityDamageEvent e){if(role.equals("lobby"))e.setCancelled(true);}
@@ -162,17 +175,19 @@ public class Backend extends JavaPlugin implements Listener {
   @EventHandler public void breakBlock(BlockBreakEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void move(PlayerMoveEvent e){if(role.equals("lobby")&&e.getTo().getY()<99)e.getPlayer().teleport(e.getPlayer().getWorld().getSpawnLocation());}
   @EventHandler public void interact(PlayerInteractEvent e){if(!role.equals("lobby"))return;e.setCancelled(true);
-    if(e.getItem()!=null&&e.getItem().getType()==Material.WRITTEN_BOOK){e.getPlayer().openBook(Guidebook.create());return;}
+    if(e.getItem()!=null&&e.getItem().getType()==Material.WRITTEN_BOOK){e.getPlayer().openBook(guide());return;}
     if(e.getItem()!=null&&e.getItem().getType()==Material.COMPASS){
-      var menu=getServer().createInventory(null,9,"Выбор сервера");
-      ItemStack pillars=new ItemStack(Material.END_STONE);var m=pillars.getItemMeta();m.setDisplayName("Pillars");pillars.setItemMeta(m);
-      ItemStack survival=new ItemStack(Material.GRASS_BLOCK);m=survival.getItemMeta();m.setDisplayName("Survival");survival.setItemMeta(m);
-      ItemStack parkourItem=new ItemStack(Material.FEATHER);m=parkourItem.getItemMeta();m.setDisplayName("Parkour");parkourItem.setItemMeta(m);
-      menu.setItem(2,pillars);menu.setItem(4,survival);menu.setItem(6,parkourItem);e.getPlayer().openInventory(menu);
+      var menu=getServer().createInventory(null,9,MENU_TITLE);
+      ItemStack glass=item(Material.GREEN_STAINED_GLASS_PANE," ",NamedTextColor.DARK_GREEN);
+      for(int slot:new int[]{0,1,3,5,7,8})menu.setItem(slot,glass);
+      menu.setItem(2,item(Material.END_STONE,"Столбы · Pillars",NamedTextColor.GOLD,"До 16 игроков на арене","Выберем свободную карту","Нажми, чтобы присоединиться"));
+      menu.setItem(4,item(Material.GRASS_BLOCK,"Выживание · Survival",NamedTextColor.GREEN,"Мир, дом и приключения","Друзья и безопасные дуэли","Нажми, чтобы присоединиться"));
+      menu.setItem(6,item(Material.FEATHER,"Паркур · Parkour",NamedTextColor.AQUA,"Новая трасса каждый час","Прыжки и контрольные точки","Нажми, чтобы присоединиться"));
+      e.getPlayer().openInventory(menu);
     }
   }
   @EventHandler public void click(InventoryClickEvent e){if(!role.equals("lobby"))return;e.setCancelled(true);
-    if(!e.getView().getTitle().equals("Выбор сервера"))return;
+    if(!e.getView().getTitle().equals(MENU_TITLE))return;
     String target=e.getRawSlot()==2?"pillars":e.getRawSlot()==4?"survival":e.getRawSlot()==6?"parkour":null;
     if(target!=null&&e.getWhoClicked() instanceof Player p){
       try {var bytes=new java.io.ByteArrayOutputStream();var out=new java.io.DataOutputStream(bytes);out.writeUTF("Connect");out.writeUTF(target);p.sendPluginMessage(this,"BungeeCord",bytes.toByteArray());p.closeInventory();}catch(Exception ex){getLogger().warning(ex.toString());}

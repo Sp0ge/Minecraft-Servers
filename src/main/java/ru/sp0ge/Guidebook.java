@@ -2,39 +2,51 @@ package ru.sp0ge;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import java.util.*;
+
 public final class Guidebook {
+ static final Set<String> RUN=Set.of("/server lobby","/server survival","/server pillars","/server pillars_1","/server parkour","/home","/checkpoint","/restart","/pvpleave","/help");
  public static ItemStack create(){
   ItemStack book=new ItemStack(Material.WRITTEN_BOOK);BookMeta meta=(BookMeta)book.getItemMeta();
-  meta.setTitle("Команды и режимы");meta.setAuthor("Minecraft Servers");
-  meta.setPages(paginate(
-   "§6Minecraft Servers\n\n§0В сети до 64 игроков.\n\nSurvival — выживание.\nPillars — столбы.\nParkour — паркур.\nPvP — дуэли.\n\n/help — справка.\nВ lobby есть компас.",
-   "§6Вход\n\n§0/register пароль повтор\nСоздать аккаунт.\n\n/login пароль\nВойти.\n\nДля выбора режима сначала войдите. Ник и аккаунт сохраняются между режимами.",
-   "§6Аккаунт и lobby\n\n§0/logout — выйти.\n\n/changepassword старый новый\nСменить пароль.\n\nНе делитесь паролем.\n/server lobby\nВернуться в lobby.",
-   "§6Выбор режима\n\n§0/server survival\nВыживание.\n\n/server pillars\nСвободная арена.\n\n/server parkour\nОбщий паркур.\n\nКомпас открывает меню.",
-   "§6Survival: дом\n\n§0/home — к кровати.\nДом один: текущая кровать. Поспите в ней для сохранения.\n\nЕсли кровать сломана или рядом небезопасно, телепортации не будет.",
-   "§6Survival: друзья\n\n§0/tpa имя\nЗапрос телепортации.\n\n/tpaccept — принять.\n/tpdeny — отклонить.\n\nЗапрос действует 60 секунд. Оба игрока должны быть в Survival.",
-   "§6Survival: спаун\n\n§0Первый вход в сезон: случайная безопасная точка в квадрате 64 × 64 чанка.\n\nПосле смерти без кровати — новая точка. При обычном входе место сохраняется.",
-   "§6Survival: чат\n\n§0Чат слышен в радиусе 8 чанков (128 блоков) в том же мире.\n\nСообщения о входе и смерти видны всему Survival.",
-   "§6Survival: расписание\n\n§0Перезапуск ежедневно в 05:00 по Москве.\n\nПредупреждения за 20, 10 и 5 минут.\n\nВайп раз в 3 месяца: новый мир и сид. Вещи сбрасываются, аккаунт сохраняется.",
-   "§6Pillars\n\n§0До 16 игроков на арене. До 5 арен.\n\n/server pillars\nВыбрать свободную.\n\n/server pillars_1\nВыбрать конкретную. Аналогично _2 … _5.",
-   "§6Pillars: арены\n\n§0После выхода всех игроков карта сбрасывается.\n\nПервая арена всегда готова. Остальные запускаются по запросу.\n\nВ идущий матч можно зайти наблюдателем по имени арены.",
-   "§6Parkour\n\n§0Общая случайная трасса. Обновление каждый час: все начинают новую трассу.\n\n/checkpoint\nК контрольной точке.\n\n/restart\nНачать сначала.",
-   "§6Parkour: правила\n\n§0Контрольные точки каждые 10 прыжков. При падении вы вернётесь к последней.\n\nУ режима нет отдельной квоты игроков: действует общий предел сети 64.",
-   "§6PvP: вызов\n\n§0/pvp имя\nВызвать из Survival.\n\n/pvpaccept — принять.\n/pvpdeny — отклонить.\n\nВызов действует 60 секунд. Бой на отдельной арене с копией ваших вещей.",
-   "§6PvP: возврат\n\n§0После смерти оба возвращаются в Survival. Исходный инвентарь восстанавливается целиком, включая расходники и износ.\n\n/pvpleave — сдаться.\nЛимит боя: 10 минут.",
-   "§6PvP: результат\n\n§0После победы вся сеть увидит:\n\nИгрок <имя> выиграл <имя> в PVP\n\nПри отключении бой заканчивается, вещи сохраняются.\n\n/help — все команды."
-  ));book.setItemMeta(meta);return book;
+  meta.setTitle("Команды и режимы");meta.setAuthor("KiwyClub");
+  meta.displayName(Component.text("Команды и режимы",NamedTextColor.GREEN).decorate(TextDecoration.BOLD).decoration(TextDecoration.ITALIC,false));
+  meta.lore(List.of(Component.text("KiwyClub · путеводитель",NamedTextColor.GRAY).decoration(TextDecoration.ITALIC,false),Component.text("Режимы, команды и правила",NamedTextColor.DARK_GREEN).decoration(TextDecoration.ITALIC,false)));
+  List<Component> pages=new ArrayList<>();
+  pages.add(page("Игровой клуб","Добро пожаловать!","","Survival • Pillars","Parkour • PvP","","До 64 игроков","в одной сети.","","/help"));
+  Component contents=header("Оглавление");
+  String[] names={"Вход и аккаунт","Выбор режима","Survival","Pillars","Parkour","Дуэли PvP","Победы и справка"};int[] targets={3,5,6,10,12,14,16};
+  for(int i=0;i<names.length;i++)contents=contents.append(Component.text("› "+names[i],NamedTextColor.DARK_GREEN).clickEvent(ClickEvent.changePage(targets[i])).hoverEvent(HoverEvent.showText(Component.text("Открыть раздел")))).append(Component.newline());
+  pages.add(contents.append(Component.text("Нажми на раздел.",NamedTextColor.GRAY)));
+  pages.add(page("Вход в клуб","/register","пароль повтор","Создать аккаунт.","","/login пароль","Войти в аккаунт.","","Сначала войди,","выбери режим."));
+  pages.add(page("Твой аккаунт","/changepassword","старый новый","Сменить пароль.","","/logout","Выйти из аккаунта.","","Береги пароль.","Ник и вход общие."));
+  pages.add(page("Выбор режима","/server survival","Выживание.","/server pillars","Свободная арена.","/server parkour","Общий паркур.","/server lobby","Вернуться в лобби.","Компас — меню."));
+  pages.add(page("Survival · дом","/home","Вернуться к дому.","","Дом — твоя текущая","кровать. Поспи","в ней для дома.","","Сломанная кровать","не работает."));
+  pages.add(page("Survival · друзья","/tpa имя","Запросить переход.","/tpaccept","Принять запрос.","/tpdeny","Отклонить запрос.","","Запрос: 60 секунд.","Оба — в Survival."));
+  pages.add(page("Survival · мир","Первый спаун:","64×64 чанка.","Без кровати после","смерти — заново.","Обычный вход:","место сохраняется.","Чат: 128 блоков.","Входы и смерти","видны в Survival."));
+  pages.add(page("Карта и сезоны","Перезапуск: 05:00","ежедневно (МСК).","Предупреждения:","20/10/5 минут.","","Вайп: 3 месяца.","Новый мир и сид.","Вещи сбрасываются.","Аккаунт сохранён."));
+  pages.add(page("Pillars · столбы","До 16 игроков","на каждой арене.","До 5 арен в сети.","","/server pillars","Свободная арена.","/server pillars_1","Конкретная арена.","Также _2 … _5."));
+  pages.add(page("Свободные арены","Все вышли — мир","сбрасывается.","Первая арена","всегда готова.","Другие запускаются","по запросу.","В идущий матч","по имени —","наблюдателем."));
+  pages.add(page("Parkour · прыжки","/server parkour","Одна общая трасса.","","Новая трасса","каждый час.","При обновлении","стартуют заново.","","Общий предел — 64."));
+  pages.add(page("Точки трассы","/checkpoint","К последней точке.","/restart","К началу трассы.","","Точка через каждые","10 прыжков.","При падении —","возврат к точке."));
+  pages.add(page("PvP · вызов","/pvp имя","Игрок из Survival.","/pvpaccept","Принять вызов.","/pvpdeny","Отклонить вызов.","Вызов: 60 секунд.","Отдельная арена.","Вещи — копии."));
+  pages.add(page("PvP · возврат","После смерти оба","назад в Survival.","Исходные вещи","вернутся целиком.","Расходники и износ","не теряются.","/pvpleave","Завершить бой.","Бой: до 10 минут."));
+  pages.add(page("Победы и справка","Победу видит","вся сеть KiwyClub.","Уход соперника","бой заканчивается.","Вещи сохраняются.","","/help","Справка в чате.","Нажми команду."));
+  meta.pages(pages);book.setItemMeta(meta);return book;
  }
- static String[] paginate(String... sections){
-  java.util.List<String> pages=new java.util.ArrayList<>();
-  for(String section:sections){java.util.List<String> lines=new java.util.ArrayList<>();
-   for(String raw:section.split("\\n",-1)){
-    String line="";for(String word:raw.split(" ",-1)){
-     String candidate=line.isEmpty()?word:line+" "+word;
-     if(!line.isEmpty()&&candidate.replaceAll("§.","").length()>18){lines.add(line);line=word;}else line=candidate;
-    }lines.add(line);
-   }
-   for(int start=0;start<lines.size();start+=13)pages.add((start==0?"":"§0")+String.join("\n",lines.subList(start,Math.min(start+13,lines.size()))));
-  }return pages.toArray(String[]::new);
+ static Component header(String title){return Component.empty().append(Component.text("KiwyClub",NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD))
+  .append(Component.newline()).append(Component.text(title,NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
+  .append(Component.text("\n──────────────\n",NamedTextColor.GRAY));}
+ static Component page(String title,String... lines){
+  Component result=header(title);
+  for(String line:lines){Component row=Component.text(line,line.startsWith("/")?NamedTextColor.DARK_GREEN:NamedTextColor.BLACK);
+   if(RUN.contains(line))row=row.clickEvent(ClickEvent.runCommand(line)).hoverEvent(HoverEvent.showText(Component.text("Выполнить "+line)));
+   result=result.append(row).append(Component.newline());
+  }
+  return result.append(Component.text("← Оглавление",NamedTextColor.DARK_AQUA).clickEvent(ClickEvent.changePage(2)));
  }
 }
