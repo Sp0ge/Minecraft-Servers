@@ -8,6 +8,7 @@ x-managed: &managed
   mcservers.managed: "true"
 services:
   plugins:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-plugins:local
     build:
       context: ${SOURCE_ROOT:-./.runtime/source}/infra
@@ -15,6 +16,7 @@ services:
     volumes: [plugins:/shared]
     logging: *logging
   controller:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-controller:local
     build: ${SOURCE_ROOT:-./.runtime/source}/infra
     container_name: mcservers-controller
@@ -22,11 +24,12 @@ services:
     environment:
       ASSETS_HOST_DIR: ${PROJECT_ROOT:?Set PROJECT_ROOT to the checkout path}/.runtime/assets
       MAX_ARENAS: "5"
-      ARENA_HEAP: ${ARENA_HEAP:-2G}
-      ARENA_LIMIT_GIB: ${ARENA_LIMIT_GIB:-3}
-      ARENA_CPUS: "1.2"
+      ARENA_HEAP: ${ARENA_HEAP:-1536M}
+      ARENA_LIMIT_GIB: ${ARENA_LIMIT_GIB:-2.5}
+      ARENA_CPUS: ${ARENA_CPUS:-1}
       TOTAL_MEMORY_GIB: ${TOTAL_MEMORY_GIB:-29}
       MAINTENANCE_ENABLED: ${MAINTENANCE_ENABLED:-true}
+      MC_CGROUP_PARENT: ${MC_CGROUP_PARENT:-}
       BACKUP_KEEP: "2"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -45,14 +48,15 @@ services:
     networks: [internal]
     logging: *logging
   lobby:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-lobby:local
     build: ${SOURCE_ROOT:-./.runtime/source}/lobby
     container_name: mcservers-lobby
     environment:
       ROLE: lobby
       VERSION: "1.21.11"
-      MEMORY: ${LOBBY_HEAP:-1G}
-      MAX_PLAYERS: "120"
+      MEMORY: ${LOBBY_HEAP:-768M}
+      MAX_PLAYERS: "64"
     volumes:
       - lobby:/data
       - plugins:/shared:ro
@@ -61,44 +65,99 @@ services:
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
-    mem_limit: ${LOBBY_LIMIT:-2g}
-    cpus: 0.75
+    mem_limit: ${LOBBY_LIMIT:-1536m}
+    cpus: 0.5
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
     networks: [internal]
     logging: *logging
   survival:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-survival:local
     build: ${SOURCE_ROOT:-./.runtime/source}/survival
     container_name: mcservers-survival
     environment:
       ROLE: survival
       VERSION: "26.3"
-      MEMORY: ${SURVIVAL_HEAP:-8G}
-      MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-30}
+      MEMORY: ${SURVIVAL_HEAP:-6G}
+      MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
       - survival:/data
+      - duels:/duels
       - plugins:/shared:ro
       - secrets:/secrets:ro
       - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
-    mem_limit: ${SURVIVAL_LIMIT:-10g}
-    cpus: 4
+    mem_limit: ${SURVIVAL_LIMIT:-8g}
+    cpus: 3
+    labels: *managed
+    restart: unless-stopped
+    stop_grace_period: 90s
+    networks: [internal]
+    logging: *logging
+  parkour:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
+    image: minecraft-parkour:local
+    build: ${SOURCE_ROOT:-./.runtime/source}/parkour
+    container_name: mcservers-parkour
+    environment:
+      ROLE: parkour
+      VERSION: "26.3"
+      MEMORY: ${PARKOUR_HEAP:-1G}
+      MAX_PLAYERS: "64"
+    volumes:
+      - parkour:/data
+      - plugins:/shared:ro
+      - secrets:/secrets:ro
+      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+    depends_on:
+      plugins: {condition: service_completed_successfully}
+      controller: {condition: service_healthy}
+    mem_limit: ${PARKOUR_LIMIT:-2g}
+    cpus: 1
+    labels: *managed
+    restart: unless-stopped
+    stop_grace_period: 90s
+    networks: [internal]
+    logging: *logging
+  pvp:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
+    image: minecraft-pvp:local
+    build: ${SOURCE_ROOT:-./.runtime/source}/pvp
+    container_name: mcservers-pvp
+    environment:
+      ROLE: pvp
+      VERSION: "26.3"
+      MEMORY: ${PVP_HEAP:-2G}
+      MAX_PLAYERS: "64"
+    volumes:
+      - pvp:/data
+      - duels:/duels
+      - plugins:/shared:ro
+      - secrets:/secrets:ro
+      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+    depends_on:
+      plugins: {condition: service_completed_successfully}
+      controller: {condition: service_healthy}
+    mem_limit: ${PVP_LIMIT:-3g}
+    cpus: 1.5
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
     networks: [internal]
     logging: *logging
   proxy:
+    cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-proxy:local
     build: ${SOURCE_ROOT:-./.runtime/source}/proxy
     container_name: mcservers-proxy
     environment: {PROXY_MEMORY: "512M"}
     volumes:
       - proxy:/data
+      - duels:/duels:ro
       - secrets:/secrets:ro
       - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
     depends_on:
@@ -128,3 +187,6 @@ volumes:
   survival: {name: mcservers_survival}
   proxy: {name: mcservers_proxy}
   backups: {name: mcservers_backups}
+  parkour: {name: mcservers_parkour}
+  pvp: {name: mcservers_pvp}
+  duels: {name: mcservers_duels}
