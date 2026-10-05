@@ -17,14 +17,19 @@ async function main(){
  let password; if(fs.existsSync('/tests/password'))password=fs.readFileSync('/tests/password','utf8');else{password=crypto.randomBytes(12).toString('hex');fs.writeFileSync('/tests/password',password,{mode:0o600});}
  bot.chat('/register '+password+' '+password);await wait(2000);bot.chat('/login '+password);
  await until(async()=> (await api('lobby:8081','/auth?uuid='+bot._client.uuid)).authenticated,'AuthMe registration');console.log('PASS AuthMe');
- bot.chat('/server pillars');await until(()=>at(bot,'pillars_1'),'pillars join',180000);console.log('PASS automatic arena startup and join');
- const generation=(await api('controller:8080','/status')).arenas.pillars_1.generation;
- bot.chat('/server survival');await until(()=>at(bot,'survival'),'survival cross-version join');console.log('PASS survival cross-version join');
- await wait(5000);if(!await at(bot,'survival'))throw Error('Survival connection did not persist');console.log('PASS survival stable connection');
- bot.chat('/home');await wait(1000);
- await until(async()=>{const a=(await api('controller:8080','/status')).arenas.pillars_1;return a.state==='WAITING'&&a.generation!==generation;},'empty arena recreated',180000);console.log('PASS arena recreation after last player leaves');
- bot.chat('/server pillars_1');await until(()=>at(bot,'pillars_1'),'explicit arena join');console.log('PASS explicit arena join');
- bot.chat('/server lobby');await until(()=>at(bot,'lobby'),'return lobby');console.log('PASS return lobby');
- bot.quit();await wait(1000);console.log('SMOKE_OK');
+ bot.chat('/server survival');await until(()=>at(bot,'survival'),'survival');await wait(5000);
+ const rcon=require('./rcon');const cmd=s=>rcon('survival',token,s);
+ await cmd('fill 98 99 98 105 99 105 minecraft:stone');
+ await cmd('fill 98 100 98 105 103 105 minecraft:air');
+ await cmd('setblock 100 100 100 minecraft:red_bed[part=foot,facing=east]');
+ await cmd('setblock 101 100 100 minecraft:red_bed[part=head,facing=east]');
+ await cmd('spawnpoint MCNetTestA 101 100 100');await cmd('tp MCNetTestA 104 100 104');await wait(1000);
+ bot.chat('/home');await until(async()=>{const p=await api('survival:8081','/player?uuid='+bot._client.uuid);return p.x<103&&p.z<103;},'home to bed');console.log('PASS home to bed');
+ await cmd('setblock 100 100 100 minecraft:air');await cmd('setblock 101 100 100 minecraft:air');await cmd('tp MCNetTestA 104 100 104');await wait(1000);bot.chat('/home');await wait(2000);
+ const p=await api('survival:8081','/player?uuid='+bot._client.uuid);if(p.x<103)throw Error('Destroyed bed accepted');console.log('PASS destroyed bed rejected');await until(()=>fs.existsSync('/tests/tpa-ready'),'second player');const other=fs.readFileSync('/tests/tpa-ready','utf8');
+ await cmd('tp MCNetTestB 100 100 100');await wait(1000);bot.chat('/tpa MCNetTestB');await wait(2000);
+ let pos=await api('survival:8081','/player?uuid='+bot._client.uuid);if(pos.x<103)throw Error('Denied TPA moved player');console.log('PASS TPA denial');
+ bot.chat('/tpa MCNetTestB');await until(async()=>{const p=await api('survival:8081','/player?uuid='+bot._client.uuid),q=await api('survival:8081','/player?uuid='+other);return Math.abs(p.x-q.x)<1&&Math.abs(p.z-q.z)<1;},'accepted TPA');console.log('PASS TPA acceptance');fs.writeFileSync('/tests/tpa-done','ok');bot.quit();console.log('HOME_TPA_OK');
+
 }
 main().then(()=>process.exit(0)).catch(e=>{console.error(e.stack);process.exit(1);});

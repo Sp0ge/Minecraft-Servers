@@ -133,7 +133,7 @@ public class Backend extends JavaPlugin implements Listener {
     if(!role.equals("survival")){p.sendMessage("Команда доступна на survival.");return true;}
     switch(cmd.getName()){
       case "home" -> {
-        Location bed=p.getBedSpawnLocation();
+        Location bed=p.getRespawnLocation(false);
         if(bed==null){p.sendMessage("Дом не задан: поспите в кровати.");return true;}
         Block b=bed.getBlock();
         if(!(b.getBlockData() instanceof Bed)){p.sendMessage("Кровать отсутствует.");return true;}

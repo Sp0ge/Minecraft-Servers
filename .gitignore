@@ -1,5 +1,7 @@
 target/
 __pycache__/
 node_modules/
-password
+password*
+tpa-ready
+tpa-done
 *.log
