@@ -1,8 +1,3 @@
-# Servers Builds Repo
-### To download minecraft server build, use command: 
+# lobby
 
-```
-git clone --branch <build name> https://github.com/Sp0ge/MinecraftServers
-```
-
-## Servers list
+Сборка запускается из docker-compose.yml ветки main. Настройки генерируются start.py.
