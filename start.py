@@ -94,7 +94,7 @@ difficulty=normal
 enable-rcon=true
 rcon.port=25575
 rcon.password='''+pathlib.Path('/secrets/api-token').read_text().strip()+'''
-motd=Minecraft Servers - '''+role+'''
+motd=KiwyClub - '''+role+'''
 max-tick-time=120000
 sync-chunk-writes=true
 ''')
