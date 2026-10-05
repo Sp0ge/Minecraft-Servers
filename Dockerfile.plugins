@@ -1,0 +1,8 @@
+FROM maven:3.9-eclipse-temurin-25 AS build
+WORKDIR /src
+COPY pom.xml .
+COPY src src
+RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
+FROM alpine:3.22
+COPY --from=build /src/target/minecraft-backend-1.0.0.jar /backend.jar
+CMD ["sh", "-c", "cp /backend.jar /shared/backend.jar"]

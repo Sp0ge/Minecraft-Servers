@@ -1,0 +1,21 @@
+name: NetworkBackend
+version: 1.0.0
+main: ru.sp0ge.Backend
+api-version: '1.21'
+load: STARTUP
+softdepend: [AuthMe]
+commands:
+  home:
+    description: Teleport to your bed
+  tpa:
+    description: Request teleport
+  tpaccept:
+    description: Accept teleport request
+  tpdeny:
+    description: Reject teleport request
+  arena:
+    description: Control arena admission
+    permission: network.arena.admin
+permissions:
+  network.arena.admin:
+    default: op

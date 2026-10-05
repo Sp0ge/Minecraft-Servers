@@ -1,0 +1,37 @@
+[
+  [
+    "https://fill-data.papermc.io/v1/objects/77cdcd758777734b0b64db74974f68e56cb08637f3c36b26734842cb8521cc2e/paper-26.3-157.jar",
+    "paper-26.3.jar",
+    "77cdcd758777734b0b64db74974f68e56cb08637f3c36b26734842cb8521cc2e"
+  ],
+  [
+    "https://fill-data.papermc.io/v1/objects/158703f75a26f842ea656b3dc6d75bf3d1ec176b97a2c36384d0b80b3871af53/paper-1.21.10-130.jar",
+    "paper-1.21.10.jar",
+    "158703f75a26f842ea656b3dc6d75bf3d1ec176b97a2c36384d0b80b3871af53"
+  ],
+  [
+    "https://github.com/AuthMe/AuthMeReloaded/releases/download/6.0.1/AuthMe-6.0.1-Paper.jar",
+    "AuthMe.jar",
+    "7704335e9e73a634d9d926344f77897f4c74f78f82453a59f5aa0f8d2722450a"
+  ],
+  [
+    "https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar",
+    "ViaVersion.jar",
+    "72c40a6a702d67f226fc9a0d8ad82aba1483fdabe2e6159bcdddb2dc070750b0"
+  ],
+  [
+    "https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar",
+    "ViaBackwards.jar",
+    "194e9250224632274d7b3c17e411e031a9223c1863c6f5138d53c721f07ab78d"
+  ],
+  [
+    "https://fill-data.papermc.io/v1/objects/5ffef465eeeb5f2a3c23a24419d97c51afd7dbb4923ff42df9a3f58bba1ccfba/paper-1.21.11-132.jar",
+    "paper-1.21.11.jar",
+    "5ffef465eeeb5f2a3c23a24419d97c51afd7dbb4923ff42df9a3f58bba1ccfba"
+  ],
+  [
+    "https://fill-data.papermc.io/v1/objects/35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8/velocity-4.2.0-30.jar",
+    "velocity.jar",
+    "35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8"
+  ]
+]

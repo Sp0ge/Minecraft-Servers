@@ -1,8 +1,7 @@
-# Servers Builds Repo
-### To download minecraft server build, use command: 
+# Контроллер Minecraft Servers
 
-```
-git clone --branch <build name> https://github.com/Sp0ge/MinecraftServers
-```
+Контроллер арен, расписание survival, резервные копии, общий Paper-плагин и загрузчик артефактов.
 
-## Servers list
+Инструкции запуска находятся в Readme.md основной ветки. `tests/` содержит автоматические проверки; `integration/` — клиентскую проверку AuthMe, маршрутизации и сброса Pillars. Пароли создаются локально и исключены из Git.
+
+`rcon.py <сервер> <команда>` запускается внутри контейнера контроллера. Токен берётся из тома secrets и не выводится.
