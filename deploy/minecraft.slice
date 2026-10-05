@@ -1,0 +1,9 @@
+[Unit]
+Description=Minecraft network resource budget
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+CPUQuota=1200%
+MemoryMax=32G
+MemorySwapMax=0

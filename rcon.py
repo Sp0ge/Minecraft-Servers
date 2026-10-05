@@ -24,4 +24,4 @@ def command(host,text):
    if t==2:break
   sock.sendall(packet(2,2,text));i,t,s=receive();return s
 if __name__=='__main__':
- parser=argparse.ArgumentParser();parser.add_argument('server',choices=['lobby','survival']+[f'pillars_{i}' for i in range(1,6)]);parser.add_argument('command');args=parser.parse_args();print(command(args.server,args.command))
+ parser=argparse.ArgumentParser();parser.add_argument('server',choices=['lobby','survival','parkour','pvp']+[f'pillars_{i}' for i in range(1,6)]);parser.add_argument('command');args=parser.parse_args();print(command(args.server,args.command))

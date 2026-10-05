@@ -35,6 +35,18 @@ class ControllerTests(unittest.TestCase):
   self.c.resources=lambda:False
   self.assertEqual(self.c.select('pillars','p')['status'],'failed')
   self.c.WORKER.submit.assert_not_called()
+ def test_warm_arena_resets_only_after_visit(self):
+  arena={'players':[],'reservations':{},'visited':False,'ready_at':1}
+  self.assertIsNone(self.c.empty_action('pillars_1',arena,1000))
+  arena['visited']=True;self.assertEqual(self.c.empty_action('pillars_1',arena,1000),'reset')
+ def test_demand_arena_retires_after_last_exit_or_unused_grace(self):
+  arena={'players':[],'reservations':{},'visited':False,'ready_at':100}
+  self.assertIsNone(self.c.empty_action('pillars_2',arena,120))
+  self.assertEqual(self.c.empty_action('pillars_2',arena,131),'retire')
+  arena['visited']=True;self.assertEqual(self.c.empty_action('pillars_2',arena,101),'retire')
+ def test_inflight_reservation_prevents_empty_reset(self):
+  arena={'players':[],'reservations':{'player':200},'visited':True,'ready_at':1}
+  for name in ('pillars_1','pillars_2'):self.assertIsNone(self.c.empty_action(name,arena,100))
  def test_calendar_months_and_warning_times(self):
   self.assertEqual(self.c.add_months(datetime.date(2027,11,30),3),datetime.date(2028,2,29))
   self.c.maintenance_state={'next_wipe':'2027-01-05','warnings':[],'last_restart':None};self.c.api=Mock(return_value={})

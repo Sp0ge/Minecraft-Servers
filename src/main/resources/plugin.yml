@@ -13,6 +13,18 @@ commands:
     description: Accept teleport request
   tpdeny:
     description: Reject teleport request
+  pvp:
+    description: Request a duel
+  pvpaccept:
+    description: Accept a duel
+  pvpdeny:
+    description: Reject a duel
+  pvpleave:
+    description: Leave a duel
+  checkpoint:
+    description: Return to checkpoint
+  restart:
+    description: Restart parkour
   arena:
     description: Control arena admission
     permission: network.arena.admin

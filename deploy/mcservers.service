@@ -1,0 +1,18 @@
+[Unit]
+Description=Minecraft Docker network
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/minecraft-servers
+Environment=PROJECT_ROOT=/opt/minecraft-servers
+ExecStart=/usr/bin/docker compose --env-file .runtime/ubuntu.env up -d
+ExecStop=/usr/bin/docker compose --env-file .runtime/ubuntu.env down
+TimeoutStartSec=300
+TimeoutStopSec=1000
+
+[Install]
+WantedBy=multi-user.target

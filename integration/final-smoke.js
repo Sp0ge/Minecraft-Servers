@@ -1,0 +1,17 @@
+const mineflayer=require('mineflayer'),fs=require('fs'),crypto=require('crypto'),rcon=require('./rcon');
+const token=fs.readFileSync('/secrets/api-token','utf8').trim(),rp=token;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));let bots=[];
+async function api(host,path,body){const r=await fetch('http://'+host+path,{headers:{Authorization:'Bearer '+token},...(body===undefined?{}:{method:'POST',body:JSON.stringify(body)}),signal:AbortSignal.timeout(45000)});if(!r.ok)throw Error(host+path+' '+r.status);return r.json();}
+async function until(check,label,timeout=120000){const t=Date.now();while(Date.now()-t<timeout){if(await check())return;await sleep(500);}throw Error('Timeout '+label);}
+async function at(b,host){try{return (await api(host+':8081','/status')).players.includes(b._client.uuid)}catch{return false}}
+async function join(name,password){const b=mineflayer.createBot({host:'proxy',username:name,auth:'offline',version:'1.21.10',physicsEnabled:false});bots.push(b);b.lines=[];b.on('messagestr',s=>b.lines.push(s));b.on('kicked',s=>console.log('KICK',name,JSON.stringify(s)));b.on('error',e=>console.log('ERROR',name,e.message));b._client.on('playerlist_header',p=>b.tabHeader=JSON.stringify(p));b._client.on('declare_commands',p=>b.commands=p.nodes[p.rootIndex].children.map(i=>p.nodes[i].extraNodeData.name));
+const write=b._client.write.bind(b._client);b._client.write=(n,d)=>{if(['position','position_look','look'].includes(n)&&Object.entries(d).some(([k,v])=>['x','y','z','yaw','pitch'].includes(k)&&!Number.isFinite(v)))return;write(n,d);if(['position','position_look','look','flying'].includes(n))write('tick_end',{})};
+await until(()=>at(b,'lobby'),'lobby '+name);await sleep(2500);if(!b.inventory.items().some(i=>i.name==='written_book'))throw Error('Missing guidebook');console.log('PASS guidebook',name);b.chat('/login '+password);await until(async()=>(await api('lobby:8081','/auth?uuid='+b._client.uuid)).authenticated,'auth');await sleep(3500);return b;}
+async function route(b,target){b.chat('/server '+target);await until(()=>at(b,target),'route '+target,180000);await sleep(1500)}
+const inventory=o=>JSON.stringify([o.storage,o.armor,o.extra,o.level,o.exp,o.total_exp]);
+async function main(){
+ const a=await join('MCNetTestA',fs.readFileSync('/tests/password','utf8'));const book=a.inventory.items().find(i=>i.name==='written_book');if(!JSON.stringify(book).includes('Команды и режимы'))throw Error('Book title mismatch');console.log('PASS book title and content',JSON.stringify(book));
+ a.chat('/plugins');await until(()=>a.lines.some(s=>s.includes('Команда недоступна')),'command blocked');console.log('PASS unwanted command blocked');
+ await route(a,'pillars_2');const generation=(await api('controller:8080','/status')).arenas.pillars_2.generation;fs.writeFileSync('/tests/arena-2-generation',generation);console.log('PASS demand arena join',generation);await route(a,'lobby');await until(async()=>(await api('controller:8080','/status')).arenas.pillars_2.state==='STOPPED','empty demand arena removed',120000);console.log('PASS empty demand arena retired');
+ const arena=(await api('controller:8080','/status')).arenas.pillars_1;if(arena.state!=='WAITING'||arena.visited)throw Error('Warm arena not clean');console.log('PASS one warm clean arena');a.quit();await sleep(1000);console.log('FINAL_SMOKE_OK');}
+ main().then(()=>process.exit(0)).catch(e=>{console.error(e.stack);for(const b of bots)b.quit();process.exit(1)});

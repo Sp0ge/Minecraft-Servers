@@ -36,6 +36,30 @@ def resources():
  if shutil.disk_usage(STATE).free<2*1024**3:return False
  return usage+need<=cap and usage+need<=CLIENT.info()['MemTotal']-1024**3
 
+def remove_empty(name):
+ a=ARENAS[name];existing=CLIENT.containers.get(PREFIX+name)
+ if existing.status=='running':api(name+':8081','/admission','closed')
+ report=api(name+':8081','/status') if existing.status=='running' else {'generation':a['generation'],'count':0}
+ with LOCK:
+  if report.get('generation')!=a['generation'] or report.get('count',1)!=0 or a['reservations']:
+   if existing.status=='running':api(name+':8081','/admission','open')
+   a['state']='STARTING';return False
+ if existing.labels.get('mcservers.arena')!=name:raise RuntimeError('Container ownership mismatch')
+ existing.stop(timeout=60);oldvol=existing.labels['mcservers.volume'];existing.remove()
+ vol=CLIENT.volumes.get(oldvol)
+ if vol.attrs.get('Labels',{}).get('mcservers.arena')!=name:raise RuntimeError('Volume ownership mismatch')
+ vol.remove();return True
+
+def retire(name):
+ if shutting_down:return
+ try:
+  if not remove_empty(name):return
+  with LOCK:ARENAS[name].update(state='STOPPED',generation=None,players=[],reservations={},visited=False,error=None);persist()
+  logging.info('Removed empty demand arena %s',name)
+ except Exception as e:
+  with LOCK:ARENAS[name].update(state='FAILED',error=str(e));persist()
+  logging.exception('Arena deletion failed for %s',name)
+
 def spawn(name,reset=False):
  if shutting_down:return
  a=ARENAS[name]
@@ -44,18 +68,7 @@ def spawn(name,reset=False):
   with LOCK:
    if not reset and not resources(): raise RuntimeError('Недостаточно доступного бюджета памяти для новой арены.')
   if reset:
-   existing=CLIENT.containers.get(PREFIX+name)
-   if existing.status=='running':api(name+':8081','/admission','closed')
-   report=api(name+':8081','/status') if existing.status=='running' else {'generation':a['generation'],'count':0}
-   with LOCK:
-    if report.get('generation')!=a['generation'] or report.get('count',1)!=0 or a['reservations']:
-     api(name+':8081','/admission','open');a['state']='STARTING';return
-   old=CLIENT.containers.get(PREFIX+name)
-   if old.labels.get('mcservers.arena')!=name: raise RuntimeError('Container ownership mismatch')
-   old.stop(timeout=60);oldvol=old.labels['mcservers.volume'];old.remove()
-   vol=CLIENT.volumes.get(oldvol)
-   if vol.attrs.get('Labels',{}).get('mcservers.arena')!=name: raise RuntimeError('Volume ownership mismatch')
-   vol.remove()
+   if not remove_empty(name):return
   with LOCK:
    if not resources():raise RuntimeError('Недостаточно памяти после сброса.')
   if not Path('/assets/pillars.zip').exists() and os.getenv('ALLOW_TEST_MAP')!='true':
@@ -71,11 +84,12 @@ def spawn(name,reset=False):
     network=NETWORK,mem_limit=int(float(os.getenv('ARENA_LIMIT_GIB','3'))*1024**3),
     memswap_limit=int(float(os.getenv('ARENA_LIMIT_GIB','3'))*1024**3),nano_cpus=int(float(os.getenv('ARENA_CPUS','1.2'))*1e9),
     labels={'mcservers.managed':'true','mcservers.arena':name,'mcservers.generation':generation,'mcservers.volume':volname},
+    cgroup_parent=os.getenv('MC_CGROUP_PARENT') or None,
     restart_policy={'Name':'no'},log_config=docker.types.LogConfig(type='json-file',config={'max-size':'10m','max-file':'3'}))
   # Replace endpoint with a stable DNS alias before starting the JVM.
   net=CLIENT.networks.get(NETWORK);net.disconnect(c);net.connect(c,aliases=[name]);c.start()
   with LOCK:
-   a.update(state='STARTING',generation=generation,players=[],visited=False,reservations={},error=None,started_at=time.time());persist()
+   a.update(state='STARTING',generation=generation,players=[],visited=False,reservations={},error=None,started_at=time.time(),ready_at=None);persist()
   logging.info('Created %s generation=%s',name,generation)
  except Exception as e:
   with LOCK:a.update(state='FAILED',error=str(e));persist()
@@ -105,7 +119,8 @@ def recover():
   n=c.labels.get('mcservers.arena')
   if n in ARENAS:
    ARENAS[n].update(state='STARTING' if c.status=='running' else 'RESETTING',generation=c.labels.get('mcservers.generation'),started_at=time.time())
-   if c.status!='running':WORKER.submit(spawn,n,True)
+   if c.status!='running':WORKER.submit(spawn,n,True) if n=='pillars_1' else WORKER.submit(retire,n)
+ if ARENAS['pillars_1']['state']=='STOPPED':ARENAS['pillars_1']['state']='QUEUED';WORKER.submit(spawn,'pillars_1')
 
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
@@ -150,7 +165,8 @@ def maintain(wipe=False):
    helper=CLIENT.containers.run('minecraft-controller:local',command=['python','/app/maintenance.py'],
     environment={'BACKUP_KEEP':os.getenv('BACKUP_KEEP','2'),'PREVIOUS_SEED':str(status['seed'])},network_disabled=True,
     mounts=[Mount('/survival','mcservers_survival',type='volume'),Mount('/backups','mcservers_backups',type='volume')],
-    labels={'mcservers.managed':'true'},mem_limit='512m',nano_cpus=250000000,detach=True)
+    labels={'mcservers.managed':'true'},cgroup_parent=os.getenv('MC_CGROUP_PARENT') or None,
+    mem_limit='512m',nano_cpus=250000000,detach=True)
    try:
     result=helper.wait(timeout=600);logging.info('Wipe: %s',helper.logs().decode())
     if result['StatusCode']!=0:raise RuntimeError('Backup/wipe helper failed; survival remains stopped for review')
@@ -181,6 +197,12 @@ def schedule(now):
  if now.hour==5 and now.minute==0 and maintenance_state.get('last_restart')!=date and not maintenance_busy and not maintenance_state.get('error'):
   maintenance_busy=True;MAINTENANCE_WORKER.submit(maintain,date>=maintenance_state['next_wipe'])
 
+def empty_action(name,arena,now):
+ if arena["players"] or arena["reservations"]:return None
+ if arena["visited"]:return "reset" if name=="pillars_1" else "retire"
+ if name!="pillars_1" and now-arena["ready_at"]>30:return "retire"
+ return None
+
 def loop():
  while not shutting_down:
   for n in ARENAS:
@@ -194,8 +216,12 @@ def loop():
      a['players']=report['players'];a['visited']=report['visited']
      a['reservations']={p:t for p,t in a['reservations'].items() if t>now and p not in report['players']}
      a['state']='WAITING' if report['accepting'] else 'IN_GAME';a['last_seen']=now
-     if a['visited'] and not a['players'] and not a['reservations']:
-      a['state']='RESETTING';persist();WORKER.submit(spawn,n,True)
+     if not a.get('ready_at'):a['ready_at']=now
+     action=empty_action(n,a,now)
+     if action:
+      a['state']='RESETTING';persist()
+      if action=='reset':WORKER.submit(spawn,n,True)
+      else:WORKER.submit(retire,n)
    except Exception:
     with LOCK:
      a=ARENAS[n]

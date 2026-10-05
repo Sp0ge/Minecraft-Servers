@@ -5,3 +5,11 @@ password*
 tpa-ready
 tpa-done
 *.log
+
+accounts*.json
+*.jsonl
+
+feature-account.json
+pvp-restart-ready
+
+arena-2-generation
