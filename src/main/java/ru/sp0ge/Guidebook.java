@@ -17,13 +17,13 @@ public final class Guidebook {
   meta.displayName(Component.text("Команды и режимы",NamedTextColor.GREEN).decorate(TextDecoration.BOLD).decoration(TextDecoration.ITALIC,false));
   meta.lore(List.of(Component.text("KiwyClub · путеводитель",NamedTextColor.GRAY).decoration(TextDecoration.ITALIC,false),Component.text("Режимы, команды и правила",NamedTextColor.DARK_GREEN).decoration(TextDecoration.ITALIC,false)));
   List<Component> pages=new ArrayList<>();
-  pages.add(page("Игровой клуб","Добро пожаловать!","","Survival • Pillars","Parkour • PvP","","До 64 игроков","в одной сети.","","/help"));
+  pages.add(page("Игровой клуб","Java-аккаунт","со своей лицензией.","Survival • Pillars","Parkour • PvP","","До 64 игроков","в одной сети.","","/help"));
   Component contents=header("Оглавление");
   String[] names={"Вход и аккаунт","Выбор режима","Survival","Pillars","Parkour","Дуэли PvP","Победы и справка"};int[] targets={3,5,6,10,12,14,16};
   for(int i=0;i<names.length;i++)contents=contents.append(Component.text("› "+names[i],NamedTextColor.DARK_GREEN).clickEvent(ClickEvent.changePage(targets[i])).hoverEvent(HoverEvent.showText(Component.text("Открыть раздел")))).append(Component.newline());
   pages.add(contents.append(Component.text("Нажми на раздел.",NamedTextColor.GRAY)));
   pages.add(page("Вход в клуб","/register","пароль повтор","Создать аккаунт.","","/login пароль","Войти в аккаунт.","","Сначала войди,","выбери режим."));
-  pages.add(page("Твой аккаунт","/changepassword","старый новый","Сменить пароль.","","/logout","Выйти из аккаунта.","","Береги пароль.","Ник и вход общие."));
+  pages.add(page("Твой аккаунт","/changepassword","старый новый","Сменить пароль.","","/logout","Выйти из аккаунта.","","Скин — из твоего","Minecraft-профиля."));
   pages.add(page("Выбор режима","/server survival","Выживание.","/server pillars","Свободная арена.","/server parkour","Общий паркур.","/server lobby","Вернуться в лобби.","Компас — меню."));
   pages.add(page("Survival · дом","/home","Вернуться к дому.","","Дом — твоя текущая","кровать. Поспи","в ней для дома.","","Сломанная кровать","не работает."));
   pages.add(page("Survival · друзья","/tpa имя","Запросить переход.","/tpaccept","Принять запрос.","/tpdeny","Отклонить запрос.","","Запрос: 60 секунд.","Оба — в Survival."));

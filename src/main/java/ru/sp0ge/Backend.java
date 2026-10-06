@@ -115,9 +115,8 @@ public class Backend extends JavaPlugin implements Listener {
             } else if(path.equals("/parkour/regenerate")&&role.equals("parkour")&&exchange.getRequestMethod().equals("POST")) {
               parkour.renew();response.complete(json.toJson(parkour.course));
             } else if(path.equals("/admit") && exchange.getRequestMethod().equals("POST") && Set.of("survival","parkour","pvp").contains(role)) {
-              String name=java.net.URLDecoder.decode(exchange.getRequestURI().getQuery().replace("name=",""),StandardCharsets.UTF_8);
-              if(!name.matches("[a-zA-Z0-9_]{3,16}"))throw new IllegalArgumentException("Invalid player name");
-              getServer().getOfflinePlayer(name).setWhitelisted(true);response.complete("{}");
+              UUID id=UUID.fromString(exchange.getRequestURI().getQuery().replace("uuid=",""));
+              getServer().getOfflinePlayer(id).setWhitelisted(true);response.complete("{}");
             } else if(path.equals("/player")) {
               UUID id=UUID.fromString(exchange.getRequestURI().getQuery().replace("uuid=",""));Player p=getServer().getPlayer(id);
               if(p==null)throw new IllegalStateException("Player not joined");Location l=p.getLocation();
