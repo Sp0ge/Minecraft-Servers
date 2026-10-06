@@ -58,7 +58,7 @@ final class ClubStyle {
   }
   if(topic.equals("pvp")||topic.equals("all")){
    section(p,"PvP · вызови соперника из Survival");command(p,"/pvp <игрок>","отправить вызов на 60 секунд");command(p,"/pvpaccept","принять вызов");command(p,"/pvpdeny","отклонить вызов");command(p,"/pvpleave","сдаться на арене и вернуться");
-   text(p,"Бой в отдельной комнате с копиями ваших вещей, до 10 минут.");text(p,"После смерти, сдачи или выхода оба вернутся в Survival.");text(p,"Исходный инвентарь восстановится целиком: расходники и износ тоже.");text(p,"Победу увидит вся сеть KiwyClub.");
+   text(p,"Поле 3×3 чанка со стеной, случайным рельефом и укрытиями.");text(p,"Новая карта перед каждой дуэлью; бой до 10 минут с копиями вещей.");text(p,"После смерти, сдачи или выхода оба вернутся в Survival.");text(p,"Исходный инвентарь восстановится целиком: расходники и износ тоже.");text(p,"Победу увидит вся сеть KiwyClub.");
   }
   if(!topic.equals("main"))p.sendMessage(Component.text("\n  ").append(button("Все разделы","main")).append(Component.text("  /help — главное меню",MUTED)));
   p.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━\n",LINE));
