@@ -35,9 +35,10 @@ final class ClubStyle {
    text(p,"Выбери раздел выше — или нажми команду ниже.");section(p,"Твой режим");
    command(p,"/server survival","свой мир, дом, друзья и дуэли");command(p,"/server pillars","битвы на столбах, до 16 игроков");
    command(p,"/server parkour","новая трасса каждый час и после победы");command(p,"/server lobby","лобби, компас и книга со справкой");
-   text(p,"PvP начинается из Survival: /pvp <игрок>.");command(p,"/help all","все команды и правила");text(p,"В сети до 64 игроков. Книга доступна в лобби.");
+   text(p,"PvP начинается из Survival: /pvp <игрок>.");command(p,"/voicechat","голосовой чат во всех режимах; меню также по V");text(p,"Для голоса нужен мод Simple Voice Chat на клиенте.");command(p,"/help all","все команды и правила");text(p,"В сети до 64 игроков. Книга доступна в лобби.");
   }
   if(topic.equals("account")||topic.equals("all")){
+   command(p,"/voicechat","голосовой чат во всех режимах; меню также по V");
    section(p,"Вход и аккаунт · в лобби");text(p,"Вход с лицензионным Java-аккаунтом. Скин берётся из Minecraft-профиля.");command(p,"/register <пароль> <повтор>","создать аккаунт");command(p,"/login <пароль>","войти");
    command(p,"/changepassword <старый> <новый>","сменить пароль");command(p,"/logout","выйти из аккаунта");
    text(p,"После входа выбери режим через /server или компас.");

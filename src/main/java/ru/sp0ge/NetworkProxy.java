@@ -134,7 +134,7 @@ public class NetworkProxy {
   void help(Player p){ClubStyle.help(p,"main");}
   String current(Player p){return p.getCurrentServer().map(s->s.getServerInfo().getName()).orElse("lobby");}
   Set<String> commands(Player p){
-    String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help"));
+    String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
     if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","opac","oclaims","oparties"));
     if(server.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
