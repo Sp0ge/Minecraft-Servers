@@ -25,7 +25,11 @@ config=root/'config';config.mkdir(exist_ok=True)
 secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (config/'FabricProxy-Lite.toml').write_text('hackOnlineMode = true\nhackEarlySend = true\nhackMessageChain = true\nsecret = '+json.dumps(secret)+'\n')
 voice=config/'voicechat';voice.mkdir(exist_ok=True)
-(voice/'voicechat-server.properties').write_text('port='+os.getenv('VOICE_PORT','24454')+'\nbind_address=0.0.0.0\nvoice_host='+os.getenv('VOICE_PUBLIC_HOST','')+'\nmax_voice_distance=128.0\n')
+import sys
+sys.path.insert(0,'/assets')
+from voice_ports import allocate
+voice_port=allocate()
+(voice/'voicechat-server.properties').write_text('port='+str(voice_port)+'\nbind_address=0.0.0.0\nvoice_host=\nmax_voice_distance=128.0\nallow_pings=true\n')
 # Cap native and worldgen concurrency within the shared 12-thread network budget.
 (config/'c2me.toml').write_text('version = 3\nglobalExecutorParallelism = 2\n[threadedWorldGen]\nenabled = false\n')
 chunky=config/'chunky';chunky.mkdir(exist_ok=True)
