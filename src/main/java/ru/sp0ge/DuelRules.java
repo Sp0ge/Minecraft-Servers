@@ -59,15 +59,7 @@ public final class DuelRules implements Listener {
   for(JsonElement e:record.getAsJsonArray("players"))if(locked.containsKey(UUID.fromString(e.getAsJsonObject().get("uuid").getAsString())))throw new IllegalStateException("Player already matched");
   int room=0;while(rooms.contains(room))room++;if(room>=32)throw new IllegalStateException("No duel room");rooms.add(room);record.addProperty("room",room);
   matches.put(id,record);for(JsonElement e:record.getAsJsonArray("players"))locked.put(UUID.fromString(e.getAsJsonObject().get("uuid").getAsString()),id);
-  World world=plugin.getServer().getWorlds().getFirst();int cx=(room%8)*256,cz=(room/8)*256;
-  List<CompletableFuture<Chunk>> loading=new ArrayList<>();for(int x=-1;x<=1;x++)for(int z=-1;z<=1;z++)loading.add(world.getChunkAtAsync((cx>>4)+x,(cz>>4)+z,true));
-  CompletableFuture.allOf(loading.toArray(CompletableFuture[]::new)).whenComplete((unused,error)->plugin.getServer().getScheduler().runTask(plugin,()->{
-   try{
-    if(error!=null)throw new IllegalStateException(error);if(!DuelJournal.read(id).get("state").getAsString().equals("PREPARED"))throw new IllegalStateException("Duel cancelled");
-    for(int x=-16;x<=16;x++)for(int z=-16;z<=16;z++){world.getBlockAt(cx+x,100,cz+z).setType(Material.SMOOTH_STONE,false);if(Math.abs(x)==16||Math.abs(z)==16)for(int y=101;y<=105;y++)world.getBlockAt(cx+x,y,cz+z).setType(Material.BARRIER,false);}
-    record.addProperty("state","ARENA");DuelJournal.write(record);response.complete("{}");
-   }catch(Exception e){response.completeExceptionally(e);finishRecord(record,"Не удалось подготовить арену.");}
-  }));
+  DuelArena.generate(this,record,response);
  }
  void restore(Player p)throws Exception{
   for(JsonObject record:DuelJournal.records()){
@@ -90,16 +82,17 @@ public final class DuelRules implements Listener {
  }
  void finishRecord(JsonObject record,String reason){
   String id=record.get("id").getAsString();
-  try{if(java.nio.file.Files.exists(DuelJournal.path(id)))record=DuelJournal.read(id);else{matches.remove(id);engaged.remove(id);if(record.has("room"))rooms.remove(record.get("room").getAsInt());for(JsonElement e:record.getAsJsonArray("players"))locked.remove(UUID.fromString(e.getAsJsonObject().get("uuid").getAsString()));return;}}catch(Exception e){throw new IllegalStateException(e);}
+  try{if(java.nio.file.Files.exists(DuelJournal.path(id)))record=DuelJournal.read(id);else{matches.remove(id);engaged.remove(id);if(record.has("room")){int room=record.get("room").getAsInt();rooms.remove(room);if(arena)DuelArena.release(plugin,room);}for(JsonElement e:record.getAsJsonArray("players"))locked.remove(UUID.fromString(e.getAsJsonObject().get("uuid").getAsString()));return;}}catch(Exception e){throw new IllegalStateException(e);}
   try{record.addProperty("state","DONE");DuelJournal.write(record);}catch(Exception e){throw new IllegalStateException("Duel journal write failed",e);}
-  matches.remove(id);engaged.remove(id);if(record.has("room"))rooms.remove(record.get("room").getAsInt());
+  matches.remove(id);engaged.remove(id);if(record.has("room")){int room=record.get("room").getAsInt();rooms.remove(room);if(arena)DuelArena.release(plugin,room);}
   for(JsonElement e:record.getAsJsonArray("players")){UUID uuid=UUID.fromString(e.getAsJsonObject().get("uuid").getAsString());locked.remove(uuid);Player p=plugin.getServer().getPlayer(uuid);if(p!=null){p.sendMessage(reason+" Возвращаемся в Survival; исходные вещи сохранены.");p.getInventory().clear();}}
   CompletableFuture.runAsync(()->{for(int i=0;i<10;i++)try{JsonObject body=new JsonObject();body.addProperty("id",id);proxy("/duel-return",body);return;}catch(Exception e){try{Thread.sleep(1000);}catch(InterruptedException ignored){return;}}plugin.getLogger().severe("Duel return delayed; journal preserved: "+id);});
  }
  @EventHandler(priority=EventPriority.LOWEST) public void join(PlayerJoinEvent e){Player p=e.getPlayer();try{
   if(!arena){restore(p);return;}String id=locked.get(p.getUniqueId());if(id==null){p.kickPlayer("Нет активной дуэли.");return;}JsonObject record=matches.get(id);if(java.util.stream.StreamSupport.stream(record.getAsJsonArray("players").spliterator(),false).allMatch(v->plugin.getServer().getPlayer(UUID.fromString(v.getAsJsonObject().get("uuid").getAsString()))!=null))engaged.add(id);JsonObject original=DuelJournal.member(record,p.getUniqueId());DuelJournal.inventory(p,original);p.setGameMode(GameMode.SURVIVAL);p.setHealth(p.getMaxHealth());p.setFoodLevel(20);
-  int room=record.get("room").getAsInt(),side=record.getAsJsonArray("players").get(0).getAsJsonObject().get("uuid").getAsString().equals(p.getUniqueId().toString())?-8:8;
-  p.teleport(new Location(p.getWorld(),(room%8)*256+side+.5,101,(room/8)*256+.5,side<0?-90:90,0));
+  int room=record.get("room").getAsInt();boolean first=record.getAsJsonArray("players").get(0).getAsJsonObject().get("uuid").getAsString().equals(p.getUniqueId().toString());
+  p.teleport(DuelArena.spawn(plugin.getServer().getWorlds().getFirst(),room,first));
+  p.sendMessage("Поле боя: 3×3 чанка. Новая случайная карта для каждой дуэли.");
   for(Player other:plugin.getServer().getOnlinePlayers())if(other!=p&&!Objects.equals(locked.get(other.getUniqueId()),id)){p.hidePlayer(plugin,other);other.hidePlayer(plugin,p);}
  }catch(Exception error){p.kickPlayer("Ошибка восстановления дуэли. Исходные вещи сохранены; обратитесь к администратору.");}}
  @EventHandler public void quit(PlayerQuitEvent e){requests.remove(e.getPlayer().getUniqueId());if(arena)finish(e.getPlayer().getUniqueId(),"Соперник отключился.");}
@@ -120,5 +113,25 @@ public final class DuelRules implements Listener {
  @EventHandler public void itemDamage(PlayerItemDamageEvent e){if(!arena&&locked.containsKey(e.getPlayer().getUniqueId()))e.setCancelled(true);}
  @EventHandler public void chat(io.papermc.paper.event.player.AsyncChatEvent e){if(arena)e.viewers().removeIf(v->v instanceof Player p&&!Objects.equals(locked.get(p.getUniqueId()),locked.get(e.getPlayer().getUniqueId())));}
  @EventHandler public void consume(PlayerItemConsumeEvent e){if(!arena&&locked.containsKey(e.getPlayer().getUniqueId()))e.setCancelled(true);}
- @EventHandler public void move(PlayerMoveEvent e){if(!arena&&locked.containsKey(e.getPlayer().getUniqueId()))e.setCancelled(true);}
+ @EventHandler public void move(PlayerMoveEvent e){
+  if(!arena&&locked.containsKey(e.getPlayer().getUniqueId())){e.setCancelled(true);return;}
+  if(!arena||e instanceof PlayerTeleportEvent)return;
+  JsonObject record=matches.get(locked.get(e.getPlayer().getUniqueId()));if(record==null)return;
+  int room=record.get("room").getAsInt();World world=plugin.getServer().getWorlds().getFirst();
+  if(!DuelArena.contains(e.getTo(),world,room)){
+   if(DuelArena.contains(e.getFrom(),world,room))e.setTo(e.getFrom());
+   else e.setTo(DuelArena.spawn(world,room,record.getAsJsonArray("players").get(0).getAsJsonObject().get("uuid").getAsString().equals(e.getPlayer().getUniqueId().toString())));
+  }
+ }
+ @EventHandler(ignoreCancelled=true) public void teleport(PlayerTeleportEvent e){
+  if(!arena)return;JsonObject record=matches.get(locked.get(e.getPlayer().getUniqueId()));if(record==null)return;
+  if(!DuelArena.contains(e.getTo(),plugin.getServer().getWorlds().getFirst(),record.get("room").getAsInt()))e.setCancelled(true);
+ }
+ @EventHandler public void bucket(PlayerBucketEmptyEvent e){if(arena)e.setCancelled(true);}
+ @EventHandler public void bucketFill(PlayerBucketFillEvent e){if(arena)e.setCancelled(true);}
+ @EventHandler public void explosion(EntityExplodeEvent e){if(arena)e.blockList().clear();}
+ @EventHandler public void blockExplosion(BlockExplodeEvent e){if(arena)e.blockList().clear();}
+ @EventHandler public void burn(BlockBurnEvent e){if(arena)e.setCancelled(true);}
+ @EventHandler public void ignite(BlockIgniteEvent e){if(arena)e.setCancelled(true);}
+ @EventHandler public void spread(BlockSpreadEvent e){if(arena)e.setCancelled(true);}
 }
