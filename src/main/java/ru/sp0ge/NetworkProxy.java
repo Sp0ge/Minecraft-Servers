@@ -8,10 +8,12 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.event.player.*;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.command.PlayerAvailableCommandsEvent;
 import com.velocitypowered.api.event.connection.LoginEvent;
+import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.proxy.ProxyPingEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.Component;
@@ -29,6 +31,7 @@ import org.slf4j.Logger;
 public class NetworkProxy {
   final ProxyServer proxy; final Logger log; final Gson gson=new Gson();
   final SessionSlots slots=new SessionSlots(64);
+  ModpackGate modpack;
   final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
   final Set<UUID> authenticated=ConcurrentHashMap.newKeySet(), routing=ConcurrentHashMap.newKeySet(), restoring=ConcurrentHashMap.newKeySet();
   final Set<String> announcedDuels=ConcurrentHashMap.newKeySet();
@@ -52,6 +55,7 @@ public class NetworkProxy {
   void message(Player p,String s){p.sendMessage(Component.text(s));}
   @Subscribe public void init(ProxyInitializeEvent event)throws Exception{
     token=Files.readString(Path.of("/secrets/api-token")).trim();
+    modpack=new ModpackGate(this);
     for(int i=1;i<=5;i++)proxy.registerServer(new ServerInfo("pillars_"+i,InetSocketAddress.createUnresolved("pillars_"+i,25565)));
     proxy.registerServer(new ServerInfo("pillars",InetSocketAddress.createUnresolved("lobby",25565)));
     proxy.getCommandManager().unregister("server");
@@ -112,7 +116,7 @@ public class NetworkProxy {
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
-    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","openpac","opac"));
+    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","opac","oclaims","oparties"));
     if(server.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
     if(server.equals("pvp"))result.add("pvpleave");
     if(server.startsWith("pillars_"))result.add("trigger");
@@ -139,6 +143,9 @@ public class NetworkProxy {
     if(event.getResult().isAllowed()&&!slots.acquire(event.getPlayer()))event.setResult(ResultedEvent.ComponentResult.denied(Component.text("Сеть заполнена: максимум 64 игрока. Повторите вход позже.")));
   }
   @Subscribe public void ping(ProxyPingEvent event){event.setPing(event.getPing().asBuilder().maximumPlayers(64).onlinePlayers(proxy.getPlayerCount()).build());}
+  @Subscribe(order=PostOrder.LAST) public void initialServer(PlayerChooseInitialServerEvent event){
+    event.setInitialServer(proxy.getServer("lobby").orElseThrow());
+  }
   @Subscribe(order=PostOrder.LAST) public void available(PlayerAvailableCommandsEvent event){
     if(!event.getPlayer().hasPermission("network.admin"))event.getRootNode().getChildren().removeIf(node->!commands(event.getPlayer()).contains(node.getName().toLowerCase(Locale.ROOT)));
   }
@@ -173,7 +180,7 @@ public class NetworkProxy {
     Player p=event.getPlayer();String name=event.getOriginalServer().getServerInfo().getName();
     if(current(p).equals("pvp")&&!returning.contains(p.getUniqueId())){event.setResult(ServerPreConnectEvent.ServerResult.denied());return null;}
     if(name.equals("lobby"))return null;
-    if(Set.of("survival","pvp").contains(name)&&p.getProtocolVersion().getProtocol()!=763){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Survival и PvP: установите сборку KiwyClub Fabric 1.20.1. ViaVersion не заменяет игровые моды.");return null;}
+    if(Set.of("survival","pvp").contains(name)&&(p.getProtocolVersion().getProtocol()!=763||modpack==null||!modpack.verified(p))){event.setResult(ServerPreConnectEvent.ServerResult.denied());ModpackGate.download(p,"Для Survival и PvP нужна проверенная сборка KiwyClub Fabric 1.20.1.");return null;}
     return EventTask.async(()->{
       if(!auth(p)||drained.contains(name)){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Вход закрыт: нужна авторизация или сервер на обслуживании.");return;}
       if(name.equals("pvp"))try{if(!call("pvp:8081","/duel/allowed?uuid="+p.getUniqueId()).get("allowed").getAsBoolean())event.setResult(ServerPreConnectEvent.ServerResult.denied());}catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
@@ -205,6 +212,7 @@ public class NetworkProxy {
   @Subscribe public void connected(ServerPostConnectEvent event){
     Player p=event.getPlayer();
     tab(p);
+    if(current(p).equals("lobby")&&modpack!=null)modpack.start(p);
     if(event.getPreviousServer()==null || !p.getCurrentServer().map(s->s.getServerInfo().getName().equals("lobby")).orElse(false) || !authenticated.contains(p.getUniqueId()))return;
     restoring.add(p.getUniqueId());
     CompletableFuture.runAsync(()->{
@@ -218,7 +226,9 @@ public class NetworkProxy {
     });
   }
   @Subscribe public void stop(ProxyShutdownEvent event){if(http!=null)http.stop(0);if(httpExecutor!=null)httpExecutor.shutdownNow();}
+  @Subscribe public void modReport(PluginMessageEvent event){if(modpack!=null)modpack.receive(event);}
   @Subscribe public void quit(DisconnectEvent event){slots.release(event.getPlayer());
+    if(modpack!=null)modpack.quit(event.getPlayer());
     if(proxy.getPlayer(event.getPlayer().getUniqueId()).filter(p->p!=event.getPlayer()).isEmpty())authenticated.remove(event.getPlayer().getUniqueId());
   }
   static void reply(HttpExchange x,int code,String s)throws java.io.IOException{byte[]b=s.getBytes(java.nio.charset.StandardCharsets.UTF_8);x.sendResponseHeaders(code,b.length);x.getResponseBody().write(b);x.close();}

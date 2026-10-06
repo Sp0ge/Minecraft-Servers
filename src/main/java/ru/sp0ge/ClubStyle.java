@@ -31,6 +31,7 @@ final class ClubStyle {
    .append(Component.text(" ")).append(button("Pillars","pillars")).append(Component.text(" ")).append(button("Parkour","parkour"))
    .append(Component.text(" ")).append(button("PvP","pvp")));
   if(topic.equals("main")){
+   p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));
    text(p,"Выбери раздел выше — или нажми команду ниже.");section(p,"Твой режим");
    command(p,"/server survival","свой мир, дом, друзья и дуэли");command(p,"/server pillars","битвы на столбах, до 16 игроков");
    command(p,"/server parkour","новая трасса каждый час и после победы");command(p,"/server lobby","лобби, компас и книга со справкой");
@@ -42,7 +43,8 @@ final class ClubStyle {
    text(p,"После входа выбери режим через /server или компас.");
   }
   if(topic.equals("survival")||topic.equals("all")){
-   section(p,"Survival · Fabric 1.20.1");text(p,"Для Survival и PvP нужна клиентская сборка KiwyClub.");command(p,"/openpac","партии и защита территории; карта Xaero — меню приватов");command(p,"/server survival","перейти в выживание");command(p,"/home","к текущей кровати; дом только один");
+   p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));
+   section(p,"Survival · Fabric 1.20.1");text(p,"Для Survival и PvP нужна клиентская сборка KiwyClub.");command(p,"/opac","личные настройки защиты");command(p,"/oclaims","управление приватами; также через карту Xaero");command(p,"/oparties","создание и управление партией");command(p,"/server survival","перейти в выживание");command(p,"/home","к текущей кровати; дом только один");
    command(p,"/tpa <игрок>","попросить телепортацию на 60 секунд");command(p,"/tpaccept","принять запрос");command(p,"/tpdeny","отклонить запрос");
    text(p,"Первый спаун: квадрат 64×64 чанка. Чат: радиус 128 блоков.");text(p,"Входы и смерти видны всему Survival.");
    text(p,"Перезапуск в 05:00 МСК; предупреждения за 20/10/5 минут.");text(p,"Вайп каждые 3 месяца: новый сид, мир и инвентарь.");
