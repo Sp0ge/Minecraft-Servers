@@ -19,7 +19,7 @@ public final class Guidebook {
   List<Component> pages=new ArrayList<>();
   pages.add(page("Игровой клуб","Java-аккаунт","со своей лицензией.","Survival: 1.20.1","Сборка KiwyClub.","Parkour • PvP","До 64 игроков","в одной сети.","","/help"));
   Component contents=header("Оглавление");
-  String[] names={"Вход и аккаунт","Выбор режима","Survival","Pillars","Parkour","Дуэли PvP","Победы и справка"};int[] targets={3,5,6,10,12,14,16};
+  String[] names={"Вход и аккаунт","Выбор режима","Survival","Pillars","Parkour","Дуэли PvP","Победы и справка","Моды и приваты"};int[] targets={3,5,6,10,12,14,16,17};
   for(int i=0;i<names.length;i++)contents=contents.append(Component.text("› "+names[i],NamedTextColor.DARK_GREEN).clickEvent(ClickEvent.changePage(targets[i])).hoverEvent(HoverEvent.showText(Component.text("Открыть раздел")))).append(Component.newline());
   pages.add(contents.append(Component.text("Нажми на раздел.",NamedTextColor.GRAY)));
   pages.add(page("Вход в клуб","/register","пароль повтор","Создать аккаунт.","","/login пароль","Войти в аккаунт.","","Сначала войди,","выбери режим."));
@@ -36,6 +36,8 @@ public final class Guidebook {
   pages.add(page("PvP · вызов","/pvp имя","Игрок из Survival.","/pvpaccept","Принять вызов.","/pvpdeny","Отклонить вызов.","Вызов: 60 секунд.","Поле 3×3 чанка.","Новая карта в бой."));
   pages.add(page("PvP · возврат","После смерти оба","назад в Survival.","Исходные вещи","вернутся целиком.","Расходники и износ","не теряются.","/pvpleave","Завершить бой.","Бой: до 10 минут."));
   pages.add(page("Победы и справка","Победу видит","вся сеть KiwyClub.","Уход соперника","бой заканчивается.","Вещи сохраняются.","","/help","Справка в чате.","Нажми команду."));
+  pages.add(page("Приваты и партии","/opac","Твои настройки.","/oclaims","Защита чанков.","/oparties","Партии игроков.","Карта Xaero тоже","управляет приватами.","Только в Survival."));
+  pages.add(page("Клиент и общение","Survival и PvP:","Fabric 1.20.1 +","сборка KiwyClub.","Проверка — в лобби.","Скачать сборку","Голос, эмоции,","мини-карта — через","настройки игры."));
   meta.pages(pages);book.setItemMeta(meta);return book;
  }
  static Component header(String title){return Component.empty().append(Component.text("KiwyClub",NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD))
@@ -45,6 +47,7 @@ public final class Guidebook {
   Component result=header(title);
   for(String line:lines){Component row=Component.text(line,line.startsWith("/")?NamedTextColor.DARK_GREEN:NamedTextColor.BLACK);
    if(RUN.contains(line))row=row.clickEvent(ClickEvent.runCommand(line)).hoverEvent(HoverEvent.showText(Component.text("Выполнить "+line)));
+   if(line.equals("Скачать сборку"))row=row.color(NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD).clickEvent(ClickEvent.openUrl("https://sp0ge.ru:3000/s/KiwyClubMRPack"));
    result=result.append(row).append(Component.newline());
   }
   return result.append(Component.text("← Оглавление",NamedTextColor.DARK_AQUA).clickEvent(ClickEvent.changePage(2)));

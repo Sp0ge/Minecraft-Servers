@@ -1,6 +1,7 @@
 package ru.sp0ge;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.block.data.type.Light;
 import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -26,7 +27,7 @@ public final class ParkourRules implements Listener {
  }
  void renew(){
   finishing=false;
-  if(course!=null){for(Player p:world.getPlayers())p.teleport(new Location(world,.5,101,.5));for(Step s:course.steps())platform(s,Material.AIR);}
+  if(course!=null){for(Player p:world.getPlayers())p.teleport(new Location(world,.5,101,.5));for(Step s:course.steps()){clearLighting(s);platform(s,Material.AIR);}}
   List<Step> points=new ArrayList<>();points.add(new Step(0,100,0,3));
   long seed=new java.security.SecureRandom().nextLong();Random random=new Random(seed);int x=0,y=100,z=0;
   for(int i=1;i<=80;i++){
@@ -45,7 +46,27 @@ public final class ParkourRules implements Listener {
   for(Player p:world.getPlayers()){p.teleport(new Location(world,.5,101,.5));p.sendMessage("§aKiwyClub §8• §fПаркур обновлён! Новая трасса готова.");}
  }
  static boolean slippery(int i){return i>40&&i<80&&i%10==5;}
- void build(){for(int i=0;i<course.steps().size();i++){Step s=course.steps().get(i);platform(s,i==80?Material.EMERALD_BLOCK:i%10==0?Material.LIME_CONCRETE:slippery(i)?Material.PACKED_ICE:i<=20?Material.SMOOTH_QUARTZ:i<=50?Material.CYAN_CONCRETE:Material.PURPLE_CONCRETE);}world.setSpawnLocation(0,101,0);}
+ void build(){
+  world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE,false);world.setTime(18000);
+  world.setGameRule(GameRule.DO_WEATHER_CYCLE,false);world.setStorm(false);world.setThundering(false);
+  for(int i=0;i<course.steps().size();i++){Step s=course.steps().get(i);platform(s,i==80?Material.EMERALD_BLOCK:i%10==0?Material.LIME_CONCRETE:slippery(i)?Material.PACKED_ICE:i<=20?Material.SMOOTH_QUARTZ:i<=50?Material.CYAN_CONCRETE:Material.PURPLE_CONCRETE);}
+  for(Step s:course.steps())lighting(s);
+  world.setSpawnLocation(0,101,0);
+ }
+ void lighting(Step s){
+  Light light=(Light)Material.LIGHT.createBlockData();light.setLevel(15);
+  // Light blocks have no collision or visible model, so jumps remain unchanged.
+  for(int x=-s.radius();x<=s.radius();x++)for(int z=-s.radius();z<=s.radius();z++){
+   var block=world.getBlockAt(s.x()+x,s.y()+1,s.z()+z);
+   if(block.getType().isAir()||block.getType()==Material.LIGHT)block.setBlockData(light,false);
+  }
+ }
+ void clearLighting(Step s){
+  for(int x=-s.radius();x<=s.radius();x++)for(int z=-s.radius();z<=s.radius();z++){
+   var block=world.getBlockAt(s.x()+x,s.y()+1,s.z()+z);
+   if(block.getType()==Material.LIGHT)block.setType(Material.AIR,false);
+  }
+ }
  void platform(Step s,Material material){for(int x=-s.radius();x<=s.radius();x++)for(int z=-s.radius();z<=s.radius();z++)world.getBlockAt(s.x()+x,s.y(),s.z()+z).setType(material,false);}
  void back(Player p,boolean restart){if(course==null)return;if(restart)checkpoints.put(p.getUniqueId(),0);Step s=course.steps().get(checkpoints.getOrDefault(p.getUniqueId(),0));p.teleport(new Location(world,s.x()+.5,s.y()+1,s.z()+.5));}
  @EventHandler public void join(PlayerJoinEvent e){e.getPlayer().setGameMode(GameMode.ADVENTURE);e.getPlayer().setFoodLevel(20);e.getPlayer().setSaturation(20);back(e.getPlayer(),true);e.getPlayer().sendMessage("Сложный паркур: длинные и диагональные прыжки, перепады высоты и лёд. Точки каждые 10 прыжков. /checkpoint, /restart. Новая трасса каждый час и после победы.");}

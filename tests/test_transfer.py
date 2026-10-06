@@ -17,7 +17,7 @@ class TransferTests(unittest.TestCase):
    (output/'volumes.json').write_text(json.dumps({archive.name:hashlib.sha256(archive.read_bytes()).hexdigest()}))
    with patch.object(sys,'argv',['volume_transfer.py','import','--directory',folder]),patch.object(subprocess,'check_output',return_value='') as check,patch.object(subprocess,'run') as mutate:
     with self.assertRaises(SystemExit):runpy.run_path(str(ROOT/'deploy/volume_transfer.py'),run_name='__main__')
-    mutate.assert_not_called();self.assertEqual(check.call_count,9)
+    mutate.assert_not_called();self.assertEqual(check.call_count,13)
  def test_checksum_mismatch_rejected_before_import_mutations(self):
   with tempfile.TemporaryDirectory() as folder:
    output=Path(folder);(output/'survival.tar.gz').write_bytes(b'bad')

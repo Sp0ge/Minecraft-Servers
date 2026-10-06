@@ -39,6 +39,12 @@ def resources():
  if shutil.disk_usage(STATE).free<2*1024**3:return False
  return usage+need<=cap and usage+need<=CLIENT.info()['MemTotal']-1024**3
 
+def occupied_slots():
+ # Include failed/stopped containers awaiting cleanup so errors cannot exceed five arenas.
+ actual={c.name.removeprefix(PREFIX) for c in CLIENT.containers.list(all=True,filters={'label':'mcservers.arena'}) if c.name.startswith(PREFIX)}
+ planned={name for name,a in ARENAS.items() if a['state'] not in ('STOPPED','FAILED')}
+ return len((actual|planned)&set(ARENAS))
+
 def remove_empty(name):
  a=ARENAS[name];existing=CLIENT.containers.get(PREFIX+name)
  if existing.status=='running':api(name+':8081','/admission','closed')
@@ -129,7 +135,7 @@ def select(target,player,now=None):
     if ARENAS[SPARE]['state']=='WAITING':
      ARENAS[n]['state']='QUEUED';ARENAS[SPARE]['state']='PROMOTING';persist();WORKER.submit(promote,n);return {'status':'waiting'}
     if ARENAS[SPARE]['state'] in ('QUEUED','STARTING','PROMOTING'):return {'status':'waiting'}
-    if sum(a['state'] not in ('STOPPED','FAILED') for a in ARENAS.values())>=MAX:return {'status':'full','message':'Достигнут предел пяти арен.'}
+    if occupied_slots()>=MAX:return {'status':'full','message':'Достигнут предел пяти арен.'}
     if not resources():return {'status':'failed','message':'Недостаточно ресурсов для запуска арены.'}
     ARENAS[n]['state']='QUEUED';persist();WORKER.submit(spawn,n);return {'status':'waiting'}
   failures=[ARENAS[n].get('error','Ошибка запуска') for n in choices if ARENAS[n]['state']=='FAILED']
@@ -275,7 +281,7 @@ def loop():
      if time.time()-a.get('started_at',time.time())>180 and not a.get('last_seen'):
       a['state']='FAILED';a['error']='Истекло время запуска арены';persist()
   with LOCK:
-   if ARENAS[SPARE]['state']=='STOPPED' and sum(a['state'] not in ('STOPPED','FAILED') for a in ARENAS.values())<MAX and resources():
+   if ARENAS[SPARE]['state']=='STOPPED' and occupied_slots()<MAX and resources():
     ARENAS[SPARE]['state']='QUEUED';WORKER.submit(spawn,SPARE)
   schedule(dt.datetime.now(TZ));time.sleep(2)
 

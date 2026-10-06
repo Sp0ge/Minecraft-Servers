@@ -21,7 +21,7 @@ EOF
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 fi
-apt-get install -y git python3 python3-venv sysstat
+apt-get install -y python3 python3-venv sysstat
 systemctl enable --now docker.service
 docker compose version
 [[ $(docker info --format '{{.CgroupDriver}}') == systemd ]] || { echo 'Docker systemd cgroup driver required; see deployment guide.' >&2; exit 1; }

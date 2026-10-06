@@ -1,7 +1,7 @@
 """Download pinned runtime assets; import a user-owned map without publishing it."""
 import argparse,hashlib,json,urllib.request,zipfile,shutil
 from pathlib import Path
-parser=argparse.ArgumentParser();parser.add_argument('--assets',default='.runtime/assets');parser.add_argument('--map',required=True)
+parser=argparse.ArgumentParser();parser.add_argument('--assets',default='.runtime/assets');parser.add_argument('--map',required=True);parser.add_argument('--lobby-map',required=True)
 args=parser.parse_args();dest=Path(args.assets);dest.mkdir(parents=True,exist_ok=True)
 for url,name,digest in json.loads(Path(__file__).with_name('assets.lock.json').read_text()):
  p=dest/name
@@ -22,6 +22,11 @@ elif source.resolve()!=out.resolve():shutil.copyfile(source,out)
 with zipfile.ZipFile(out) as z:
  if len([n for n in z.namelist() if n.endswith('level.dat')])!=1:raise RuntimeError('Invalid map')
 print('pillars.zip',hashlib.sha256(out.read_bytes()).hexdigest())
+source=Path(args.lobby_map);out=dest/'lobby-map.zip'
+if source.resolve()!=out.resolve():shutil.copyfile(source,out)
+with zipfile.ZipFile(out) as z:
+ if 'level.dat' not in z.namelist() or not any(n.startswith('region/') and n.endswith('.mca') for n in z.namelist()):raise RuntimeError('Invalid lobby map')
+print('lobby-map.zip',hashlib.sha256(out.read_bytes()).hexdigest())
 
 import subprocess,sys
-subprocess.run([sys.executable,str(Path(__file__).parent/"modpack/install.py"),"--assets",str(dest),"--client-output",str(dest.parent/"KiwyClub-Survival-1.20.1.mrpack")],check=True)
+subprocess.run([sys.executable,str(Path(__file__).parent/"modpack/install.py"),"--assets",str(dest)],check=True)

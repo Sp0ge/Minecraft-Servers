@@ -1,7 +1,7 @@
 """Offline export/import of persistent Minecraft volumes; never overwrite data."""
 import argparse,subprocess,json,hashlib,os
 from pathlib import Path
-NAMES=['lobby','survival','state','secrets','proxy','backups','parkour','pvp','duels']
+NAMES=['lobby','survival','state','secrets','proxy','backups','parkour','pvp','duels','survival-fabric-1.20.1','pvp-fabric-1.20.1','duels-fabric']
 def digest(path):
  h=hashlib.sha256()
  with path.open('rb') as stream:
@@ -25,7 +25,7 @@ if a.action=='export':
  existing=set(run('volume','ls','--format','{{.Name}}').splitlines())
  for name in NAMES:
   if (not (DATA/name).is_dir()) if DATA else ('mcservers_'+name not in existing):
-   if name=='backups':continue
+   if name=='backups' or DATA is None and name.endswith(('fabric-1.20.1','duels-fabric')):continue
    raise SystemExit('Missing source volume: '+name)
   helper(name,folder,"import tarfile,sys,os; p='/transfer/'+sys.argv[1]+'.tar.gz'; t=tarfile.open(p,'w:gz'); t.add('/source',arcname='.'); t.close(); os.chmod(p,0o600)")
   f=folder/(name+'.tar.gz');manifest[f.name]=digest(f)

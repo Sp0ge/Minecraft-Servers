@@ -67,9 +67,15 @@ public class Backend extends JavaPlugin implements Listener {
     getServer().getMessenger().registerOutgoingPluginChannel(this,"BungeeCord");
     if(role.equals("lobby")) getServer().getScheduler().runTask(this,()-> {
       World w=getServer().getWorlds().getFirst();
-      w.setSpawnLocation(0,101,0); w.setGameRule(GameRule.DO_MOB_SPAWNING,false);
+      try{
+        var map=JsonParser.parseString(Files.readString(Path.of("/data/world/kiwy-map.json"))).getAsJsonObject();
+        var spawn=map.getAsJsonArray("spawn");w.setSpawnLocation(spawn.get(0).getAsInt(),spawn.get(1).getAsInt(),spawn.get(2).getAsInt());
+      }catch(Exception e){throw new IllegalStateException("Lobby map spawn metadata missing",e);}
+      w.setGameRule(GameRule.DO_MOB_SPAWNING,false);
       w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE,false); w.setTime(6000);
-      for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++)w.getBlockAt(x,100,z).setType(Material.BARRIER);
+      w.setGameRule(GameRule.DO_WEATHER_CYCLE,false); w.setStorm(false); w.setThundering(false);
+      w.setGameRule(GameRule.RANDOM_TICK_SPEED,0); w.setGameRule(GameRule.DO_FIRE_TICK,false);
+      w.setPVP(false);w.getWorldBorder().setCenter(100,120);w.getWorldBorder().setSize(256);
     });
     if(role.equals("lobby"))getServer().getScheduler().runTaskTimer(this,()->getServer().getOnlinePlayers().forEach(this::lobbyKit),40,20);
     getServer().getScheduler().runTaskTimer(this,()-> {
@@ -85,7 +91,10 @@ public class Backend extends JavaPlugin implements Listener {
       snapshot=json.toJson(Map.ofEntries(Map.entry("players",ids),Map.entry("count",ids.size()),Map.entry("visited",visited),Map.entry("accepting",open),
        Map.entry("players_names",getServer().getOnlinePlayers().stream().map(Player::getName).toList()),
        Map.entry("seed",getServer().getWorlds().getFirst().getSeed()),Map.entry("role",role),Map.entry("generation",System.getenv().getOrDefault("GENERATION","static")),
-       Map.entry("tps_1m",Math.min(20,getServer().getTPS()[0])),Map.entry("mspt_mean",getServer().getAverageTickTime()),Map.entry("mspt_p95",p95)));
+       Map.entry("tps_1m",Math.min(20,getServer().getTPS()[0])),Map.entry("mspt_mean",getServer().getAverageTickTime()),Map.entry("mspt_p95",p95),
+       Map.entry("spawn",List.of(getServer().getWorlds().getFirst().getSpawnLocation().getBlockX(),getServer().getWorlds().getFirst().getSpawnLocation().getBlockY(),getServer().getWorlds().getFirst().getSpawnLocation().getBlockZ())),
+       Map.entry("daytime",getServer().getWorlds().getFirst().getTime()),Map.entry("daylight_cycle",getServer().getWorlds().getFirst().getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)),
+       Map.entry("storm",getServer().getWorlds().getFirst().hasStorm())));
       requests.entrySet().removeIf(e->e.getValue().expires()<System.currentTimeMillis());
     },1,10);
     try {
@@ -161,7 +170,7 @@ public class Backend extends JavaPlugin implements Listener {
   public void onDisable(){if(http!=null)http.stop(0);if(httpExecutor!=null)httpExecutor.shutdownNow();}
   @EventHandler public void join(PlayerJoinEvent e){visited=true;if(role.equals("lobby")){
     Player p=e.getPlayer();p.teleport(getServer().getWorlds().getFirst().getSpawnLocation());p.setGameMode(GameMode.ADVENTURE);
-    for(Player other:getServer().getOnlinePlayers())if(other!=p){p.hidePlayer(this,other);other.hidePlayer(this,p);}
+    for(Player other:getServer().getOnlinePlayers())if(other!=p){p.showPlayer(this,other);other.showPlayer(this,p);}
     getServer().getScheduler().runTaskLater(this,()->lobbyKit(p),40);
     p.sendMessage("§a§lKiwyClub §8» §fДобро пожаловать в клуб!");
     p.sendMessage("§7Войди через §a/register §7или §a/login§7. Книга и §a/help §7помогут выбрать режим.");
@@ -192,7 +201,7 @@ public class Backend extends JavaPlugin implements Listener {
   }
   @EventHandler public void place(BlockPlaceEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void breakBlock(BlockBreakEvent e){if(role.equals("lobby"))e.setCancelled(true);}
-  @EventHandler public void move(PlayerMoveEvent e){if(role.equals("lobby")&&e.getTo().getY()<99)e.getPlayer().teleport(e.getPlayer().getWorld().getSpawnLocation());}
+  @EventHandler public void move(PlayerMoveEvent e){if(role.equals("lobby")&&e.getTo().getY()<e.getPlayer().getWorld().getMinHeight()-8)e.getPlayer().teleport(e.getPlayer().getWorld().getSpawnLocation());}
   @EventHandler public void interact(PlayerInteractEvent e){if(!role.equals("lobby"))return;e.setCancelled(true);
     if(e.getItem()!=null&&e.getItem().getType()==Material.WRITTEN_BOOK){e.getPlayer().openBook(guide());return;}
     if(e.getItem()!=null&&e.getItem().getType()==Material.COMPASS){

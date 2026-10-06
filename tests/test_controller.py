@@ -8,6 +8,7 @@ class ControllerTests(unittest.TestCase):
   self.env=patch.dict(os.environ,{'SECRETS_DIR':self.temp.name+'/secrets','STATE_DIR':self.temp.name+'/state'});self.env.start()
   with patch('docker.from_env',return_value=Mock()):
    spec=importlib.util.spec_from_file_location('controller_test',ROOT/'controller.py');self.c=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.c)
+  self.c.CLIENT.containers.list.return_value=[]
   self.c.resources=lambda:True;self.c.WORKER.shutdown(wait=False);self.c.WORKER=Mock();self.c.MAINTENANCE_WORKER.shutdown(wait=False);self.c.MAINTENANCE_WORKER=Mock()
  def tearDown(self):self.env.stop();self.temp.cleanup()
  def test_concurrent_reservations_never_exceed_sixteen(self):
@@ -34,6 +35,11 @@ class ControllerTests(unittest.TestCase):
  def test_cpu_memory_shortage_refuses_launch(self):
   self.c.resources=lambda:False
   self.assertEqual(self.c.select('pillars','p')['status'],'failed')
+  self.c.WORKER.submit.assert_not_called()
+ def test_failed_containers_still_consume_arena_slots(self):
+  from types import SimpleNamespace
+  self.c.CLIENT.containers.list.return_value=[SimpleNamespace(name='mcservers-pillars_'+str(n)) for n in range(1,6)]
+  self.assertEqual(self.c.select('pillars','p')['status'],'full')
   self.c.WORKER.submit.assert_not_called()
  def test_warm_arena_resets_only_after_visit(self):
   arena={'players':[],'reservations':{},'visited':False,'ready_at':1}

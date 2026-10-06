@@ -28,6 +28,8 @@ DATA_ROOT="$PWD/ServerData" docker compose --env-file ServerData/settings.env st
 Затем перенесите папку ServerData на VM и запустите `bash start.sh` в новом main.
 В ServerData/settings.env замените локальные лимиты на значения профиля Ubuntu из
 `ServerData/source/infra/deploy/ubuntu.env`, не добавляя PROJECT_ROOT.
+MC_CGROUP_PARENT=minecraft.slice добавляйте только после установки соответствующего
+systemd slice через bootstrap.sh; обычный start.sh использует лимиты контейнеров.
 Установите BIND_ADDRESS=0.0.0.0 и MAINTENANCE_ENABLED=true.
 Не переносите старый абсолютный путь DATA_ROOT в окружении новой машины.
 
@@ -40,7 +42,8 @@ python3 ServerData/source/infra/deploy/volume_transfer.py import --directory ./p
 
 Импорт требует пустых папок назначения, проверяет SHA-256 и пути в архивах.
 Экспорт содержит приватные данные. Старые Docker volumes поддерживаются отдельным
-флагом --legacy-volumes. Нагрузочные проверки по текущему запросу не проводятся.
+флагом --legacy-volumes. Экспорт включает также Fabric-миры и журнал дуэлей.
+Нагрузочные проверки по текущему запросу не проводятся.
 
 Полная справка по режимам, структуре данных и источникам находится в Readme.md main.
 [Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/).
