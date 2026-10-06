@@ -38,6 +38,8 @@ services:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       DATA_HOST_DIR: ${DATA_ROOT:?Run start.sh to resolve the data directory}
       MAX_ARENAS: "5"
+      VOICE_PORT_MIN: ${VOICE_PORT_MIN:-24460}
+      VOICE_PORT_MAX: ${VOICE_PORT_MAX:-24559}
       ARENA_HEAP: ${ARENA_HEAP:-1536M}
       ARENA_LIMIT_GIB: ${ARENA_LIMIT_GIB:-2.5}
       ARENA_CPUS: ${ARENA_CPUS:-1}
@@ -103,8 +105,6 @@ services:
       VERSION: "1.20.1"
       CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
       MEMORY: ${SURVIVAL_HEAP:-6G}
-      VOICE_PORT: "24454"
-      VOICE_PUBLIC_HOST: ${VOICE_PUBLIC_HOST:-}
       JAVA_PROCESSORS: "3"
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
@@ -122,7 +122,6 @@ services:
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
-    ports: ["${BIND_ADDRESS:-127.0.0.1}:24454:24454/udp"]
     networks: [internal]
     logging: *logging
   parkour:
@@ -161,8 +160,6 @@ services:
       ROLE: pvp
       VERSION: "1.20.1"
       MEMORY: ${PVP_HEAP:-2G}
-      VOICE_PORT: "24455"
-      VOICE_PUBLIC_HOST: ${VOICE_PUBLIC_HOST:-}
       JAVA_PROCESSORS: "2"
       MAX_PLAYERS: "64"
     volumes:
@@ -180,7 +177,6 @@ services:
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
-    ports: ["${BIND_ADDRESS:-127.0.0.1}:24455:24455/udp"]
     networks: [internal]
     logging: *logging
   proxy:
@@ -188,7 +184,7 @@ services:
     image: minecraft-proxy:local
     build: ${SOURCE_ROOT:-./ServerData/source}/proxy
     container_name: mcservers-proxy
-    environment: {PROXY_MEMORY: "512M"}
+    environment: {PROXY_MEMORY: "512M", VOICE_PUBLIC_HOST: "${VOICE_PUBLIC_HOST:-}"}
     volumes:
       - ${DATA_ROOT:-./ServerData}/proxy:/data
       - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels:ro
@@ -197,7 +193,9 @@ services:
     depends_on:
       controller: {condition: service_healthy}
       lobby: {condition: service_started}
-    ports: ["${BIND_ADDRESS:-127.0.0.1}:${MC_PORT:-25565}:25565"]
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${MC_PORT:-25565}:25565/tcp"
+      - "${BIND_ADDRESS:-127.0.0.1}:24454:24454/udp"
     mem_limit: 1g
     cpus: 0.5
     labels: *managed

@@ -23,7 +23,7 @@ python3 - "$ROOT/network-sources.tar.gz" "$SOURCE_ROOT" <<'PY'
 import sys,tarfile,hashlib
 from pathlib import Path
 archive=Path(sys.argv[1]);target=Path(sys.argv[2])
-expected='e03ad8045601a5b8d78e1619774fb6f79c7a7a0ca03f752ad1829d9473169832'
+expected='e7a2aa836b797b2f5bf897f82ec717604d7ed1ed55bb1bada26720a6daf4f660'
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:raise SystemExit('Повреждён архив исходников KiwyClub')
 with tarfile.open(archive) as t:
  for member in t.getmembers():
@@ -78,6 +78,13 @@ PYENV
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" --profile build build
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" run --rm --no-deps client-checker
 python3 "$SOURCE_ROOT/infra/modpack/install.py" --assets "$DATA_ROOT/assets" --client-output "$DATA_ROOT/KiwyClub-Survival-1.20.1.mrpack" --checker "$DATA_ROOT/plugins/kiwy-client-checker.jar"
+# Release legacy host UDP bindings before the proxy takes over 24454.
+for legacy in survival:24454 pvp:24455; do
+ name=${legacy%:*};port=${legacy#*:}
+ if [[ -n $("${DOCKER[@]}" port "mcservers-$name" "$port/udp" 2>/dev/null || true) ]]; then
+  "${DOCKER[@]}" stop --time 300 "mcservers-$name"
+ fi
+done
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" up -d
 printf '\nKiwyClub запущен. Данные: %s\nMinecraft: localhost:25565 (локально) или IP вашей машины:25565\n' "$DATA_ROOT"
 echo 'Первый запуск миров занимает несколько минут. Настройки: ServerData/settings.env'
