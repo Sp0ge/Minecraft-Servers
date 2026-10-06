@@ -25,7 +25,7 @@ bash start.sh --local
 Первое создание миров занимает несколько минут. Скрипт включает принятие Minecraft EULA;
 запускайте его при согласии с [EULA Minecraft](https://www.minecraft.net/eula).
 
-**По умолчанию все данные проекта находятся в `./ServerData`:**
+**По умолчанию все данные проекта находятся в `./ServersData`:**
 
 | Папка | Содержимое |
 |---|---|
@@ -57,14 +57,14 @@ bash start.sh --local
 
 **Survival и PvP: Minecraft 1.20.1, Fabric Loader 0.19.5.** Выбрана версия с полным
 запрошенным набором: 52 проекта и 65 файлов с зависимостями. Полная таблица версий
-и статусов: `ServerData/source/infra/modpack/Readme.md`.
+и статусов: `ServersData/source/infra/modpack/Readme.md`.
 
-После запуска импортируйте **`ServerData/KiwyClub-Survival-1.20.1.mrpack`** в Modrinth App
+После запуска импортируйте **`ServersData/KiwyClub-Survival-1.20.1.mrpack`** в Modrinth App
 или Prism Launcher. Эта сборка нужна для Survival и PvP. Клиентские визуальные моды
 на сервер не устанавливаются. Некоторые версии имеют статус beta/alpha, указанный
 в `mods.lock.json`. ViaVersion преобразует стандартный протокол и не заменяет модпак.
 
-Прежний Paper-мир 26.3 остаётся в `ServerData/survival`. Модовый Survival создаёт
+Прежний Paper-мир 26.3 остаётся в `ServersData/survival`. Модовый Survival создаёт
 отдельный новый мир с новым сидом; автоматического переноса мира и вещей нет.
 Старые PvP-данные и записи дуэлей сохранены отдельно. Аккаунты AuthMe сохраняются.
 Незавершённые дуэли прежней сети нужно завершить до переключения версии.
@@ -155,7 +155,7 @@ UUID. Для переноса существующего прогресса ну
 свою подготовку. Миры Nether и End автоматически не генерируются.
 
 В локальном профиле автоматическая подготовка выключена. Её можно включить
-в `ServerData/settings.env`: `CHUNK_PREGEN_ENABLED=true`; для выключения — `false`.
+в `ServersData/settings.env`: `CHUNK_PREGEN_ENABLED=true`; для выключения — `false`.
 При отсутствии этой настройки используется значение `MAINTENANCE_ENABLED` профиля.
 C2ME использует 2 потока executor; экспериментальная параллельная генерация features отключена. Предгенерация сокращает
 работу при первом исследовании; фактическое ускорение и чтение с HDD не измерялись.
@@ -167,8 +167,8 @@ docker exec mcservers-controller python /app/rcon.py survival "chunky progress"
 ```
 
 Команды Chunky обычным игрокам недоступны. Сохранённые задачи — в
-`ServerData/survival-fabric-1.20.1/config/chunky`, состояние подготовки сезона — в
-`ServerData/survival-fabric-1.20.1/kiwy-chunky.json`.
+`ServersData/survival-fabric-1.20.1/config/chunky`, состояние подготовки сезона — в
+`ServersData/survival-fabric-1.20.1/kiwy-chunky.json`.
 
 ## Версии, ветки и ресурсы
 
@@ -200,7 +200,7 @@ proxy и controller по 1 ГБ: максимум 29 ГБ и 12 CPU квоты. 
 TCP публикуется только у прокси; дополнительно доступны два UDP-порта голосового чата.
 Backend API и RCON остаются внутри Docker.
 Авторизация переходов проверяется сервером; секреты создаются при первом запуске.
-Не включайте `ServerData` в Git и не публикуйте папку `secrets`.
+Не включайте `ServersData` в Git и не публикуйте папку `secrets`.
 Нагрузочные проверки не запускаются автоматически и по вашему указанию не проводятся.
 
 ## Источники

@@ -9,7 +9,7 @@ if ! command -v python3 >/dev/null; then
   if [[ $EUID == 0 ]]; then apt-get update; apt-get install -y python3; else sudo apt-get update; sudo apt-get install -y python3; fi
  else echo 'Установите Python 3, затем повторите запуск.' >&2; exit 1; fi
 fi
-export DATA_ROOT=$(python3 -c 'import os; print(os.path.abspath(os.environ.get("DATA_ROOT", "./ServerData")))')
+export DATA_ROOT=$(python3 -c 'import os; print(os.path.abspath(os.environ.get("DATA_ROOT", "./ServersData")))')
 export SOURCE_ROOT="$DATA_ROOT/source"
 export NETWORK_REVISION=$(python3 - "$ROOT/network-sources.tar.gz" <<'PYHASH'
 import hashlib,sys
@@ -76,4 +76,4 @@ PYENV
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" --profile build build
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" up -d
 printf '\nKiwyClub запущен. Данные: %s\nMinecraft: localhost:25565 (локально) или IP вашей машины:25565\n' "$DATA_ROOT"
-echo 'Первый запуск миров занимает несколько минут. Настройки: ServerData/settings.env'
+echo 'Первый запуск миров занимает несколько минут. Настройки: ServersData/settings.env'
