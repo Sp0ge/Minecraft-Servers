@@ -76,7 +76,11 @@ public class NetworkProxy {
           futures.add(p.createConnectionRequest(lobby).connect().thenAccept(r->{if(!r.isSuccessful())p.disconnect(Component.text("Survival перезапускается. Подключитесь снова."));}));
         try{CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).get(20,TimeUnit.SECONDS);reply(x,200,"{}");}catch(Exception e){reply(x,503,"{}");}
       }else if(path.equals("/undrain")&&x.getRequestMethod().equals("POST")&&"survival".equals(name)){drained.remove(name);reply(x,200,"{}");}
-      else if(path.equals("/status"))reply(x,200,gson.toJson(Map.of("players",proxy.getPlayerCount(),"drained",drained)));
+      else if(path.equals("/parkour-winner")&&x.getRequestMethod().equals("POST")){
+        String winner=new String(x.getRequestBody().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+        if(!winner.matches("[A-Za-z0-9_]{1,16}")){reply(x,400,"{}");return;}
+        proxy.sendMessage(Component.text("KiwyClub • ",ClubStyle.GREEN).append(Component.text("Игрок "+winner+" прошёл паркур! Новая трасса готова.",ClubStyle.GOLD)));reply(x,200,"{}");
+      }else if(path.equals("/status"))reply(x,200,gson.toJson(Map.of("players",proxy.getPlayerCount(),"drained",drained)));
       else reply(x,404,"{}");
     });httpExecutor=Executors.newFixedThreadPool(2);http.setExecutor(httpExecutor);http.start();
     proxy.getScheduler().buildTask(this,()->proxy.getAllPlayers().forEach(this::tab)).repeat(2,TimeUnit.SECONDS).schedule();

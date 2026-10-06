@@ -1,6 +1,7 @@
 import os,pathlib,shutil,re
 p=pathlib.Path('/data'); (p/'plugins').mkdir(exist_ok=True)
 shutil.copy('/opt/network-proxy.jar',p/'plugins/NetworkProxy.jar')
+shutil.copy('/opt/server-icon.png',p/'server-icon.png')
 for plugin in ('ViaVersion','ViaBackwards'):
  shutil.copy('/assets/'+plugin+'.jar',p/'plugins'/ (plugin+'.jar'))
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
@@ -15,7 +16,7 @@ secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (p/'forwarding.secret').write_text(secret)
 (p/'velocity.toml').write_text('''config-version = "2.7"
 bind = "0.0.0.0:25565"
-motd = "<green><bold>KiwyClub</bold> <gray>Survival • Pillars • Parkour • PvP"
+motd = "<gradient:#73DB9A:#EDD58A><bold>KiwyClub</bold></gradient> <dark_gray>•</dark_gray> <white>Твой клуб приключений</white>\\n<green>Survival</green> <gray>•</gray> <gold>Pillars</gold> <gray>•</gray> <aqua>Parkour</aqua> <gray>•</gray> <red>PvP</red>"
 show-max-players = 64
 online-mode = false
 force-key-authentication = false
