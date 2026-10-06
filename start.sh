@@ -11,6 +11,12 @@ if ! command -v python3 >/dev/null; then
 fi
 export DATA_ROOT=$(python3 -c 'import os; print(os.path.abspath(os.environ.get("DATA_ROOT", "./ServerData")))')
 export SOURCE_ROOT="$DATA_ROOT/source"
+export NETWORK_REVISION=$(python3 - "$ROOT/network-sources.tar.gz" <<'PYHASH'
+import hashlib,sys
+from pathlib import Path
+print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+PYHASH
+)
 mkdir -p "$DATA_ROOT" "$SOURCE_ROOT"
 # The archive ships the exact component sources; no Git checkout or branch downloads are required.
 python3 - "$ROOT/network-sources.tar.gz" "$SOURCE_ROOT" <<'PY'

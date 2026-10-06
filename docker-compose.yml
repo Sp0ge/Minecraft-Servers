@@ -23,6 +23,7 @@ services:
     stop_grace_period: 900s
     environment:
       ASSETS_HOST_DIR: ${DATA_ROOT:-./ServerData}/assets
+      NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       DATA_HOST_DIR: ${DATA_ROOT:?Run start.sh to resolve the data directory}
       MAX_ARENAS: "5"
       ARENA_HEAP: ${ARENA_HEAP:-1536M}
@@ -38,6 +39,8 @@ services:
       - ${DATA_ROOT:-./ServerData}/state:/state
       - ${DATA_ROOT:-./ServerData}/arenas:/arena-data
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
+    depends_on:
+      plugins: {condition: service_completed_successfully}
     mem_limit: 1g
     cpus: 0.5
     labels: *managed
@@ -55,6 +58,7 @@ services:
     build: ${SOURCE_ROOT:-./ServerData/source}/lobby
     container_name: mcservers-lobby
     environment:
+      NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: lobby
       VERSION: "1.21.11"
       MEMORY: ${LOBBY_HEAP:-768M}
@@ -80,6 +84,7 @@ services:
     build: ${SOURCE_ROOT:-./ServerData/source}/survival
     container_name: mcservers-survival
     environment:
+      NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: survival
       VERSION: "26.3"
       MEMORY: ${SURVIVAL_HEAP:-6G}
@@ -106,6 +111,7 @@ services:
     build: ${SOURCE_ROOT:-./ServerData/source}/parkour
     container_name: mcservers-parkour
     environment:
+      NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: parkour
       VERSION: "26.3"
       MEMORY: ${PARKOUR_HEAP:-1G}
@@ -131,6 +137,7 @@ services:
     build: ${SOURCE_ROOT:-./ServerData/source}/pvp
     container_name: mcservers-pvp
     environment:
+      NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: pvp
       VERSION: "26.3"
       MEMORY: ${PVP_HEAP:-2G}
