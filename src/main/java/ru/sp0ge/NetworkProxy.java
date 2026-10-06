@@ -35,6 +35,7 @@ public class NetworkProxy {
   final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
   final Set<UUID> authenticated=ConcurrentHashMap.newKeySet(), routing=ConcurrentHashMap.newKeySet(), restoring=ConcurrentHashMap.newKeySet();
   final Set<String> announcedDuels=ConcurrentHashMap.newKeySet();
+  final Set<String> announcedPillars=ConcurrentHashMap.newKeySet();
   final Set<UUID> returning=ConcurrentHashMap.newKeySet();
   final Set<String> drained=ConcurrentHashMap.newKeySet(); String token; HttpServer http; ExecutorService httpExecutor;
   @Inject public NetworkProxy(ProxyServer proxy,Logger log){this.proxy=proxy;this.log=log;}
@@ -80,7 +81,23 @@ public class NetworkProxy {
           futures.add(p.createConnectionRequest(lobby).connect().thenAccept(r->{if(!r.isSuccessful())p.disconnect(Component.text("Survival перезапускается. Подключитесь снова."));}));
         try{CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).get(20,TimeUnit.SECONDS);reply(x,200,"{}");}catch(Exception e){reply(x,503,"{}");}
       }else if(path.equals("/undrain")&&x.getRequestMethod().equals("POST")&&"survival".equals(name)){drained.remove(name);reply(x,200,"{}");}
-      else if(path.equals("/parkour-winner")&&x.getRequestMethod().equals("POST")){
+      else if(path.equals("/pillars-winner")&&x.getRequestMethod().equals("POST")){
+        try{
+          byte[] data=x.getRequestBody().readNBytes(8193);if(data.length>8192)throw new IllegalArgumentException();
+          var report=JsonParser.parseString(new String(data,java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+          String id=UUID.fromString(report.get("id").getAsString()).toString(),kind=report.get("kind").getAsString();
+          if(!Set.of("solo","red","blue","none").contains(kind))throw new IllegalArgumentException();
+          List<String> winners=new ArrayList<>();var names=report.getAsJsonArray("winners");
+          if(names.size()>16)throw new IllegalArgumentException();
+          for(var e:names){String name=e.getAsString();if(!name.matches("[A-Za-z0-9_]{1,16}")||winners.contains(name))throw new IllegalArgumentException();winners.add(name);}
+          if(kind.equals("solo")&&winners.size()!=1||kind.equals("none")&&!winners.isEmpty()||Set.of("red","blue").contains(kind)&&winners.isEmpty())throw new IllegalArgumentException();
+          if(announcedPillars.add(id)){
+            String result=switch(kind){case "solo"->"Игрок "+winners.getFirst()+" победил в Pillars!";case "red"->"В Pillars победила красная команда: "+String.join(", ",winners);case "blue"->"В Pillars победила синяя команда: "+String.join(", ",winners);default->"Матч Pillars завершён без победителей.";};
+            proxy.sendMessage(Component.text("KiwyClub • Pillars » ",ClubStyle.GREEN).append(Component.text(result,ClubStyle.GOLD)));
+          }
+          reply(x,200,"{}");
+        }catch(RuntimeException invalid){reply(x,400,"{}");}
+      }else if(path.equals("/parkour-winner")&&x.getRequestMethod().equals("POST")){
         String winner=new String(x.getRequestBody().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
         if(!winner.matches("[A-Za-z0-9_]{1,16}")){reply(x,400,"{}");return;}
         proxy.sendMessage(Component.text("KiwyClub • ",ClubStyle.GREEN).append(Component.text("Игрок "+winner+" прошёл паркур! Новая трасса готова.",ClubStyle.GOLD)));reply(x,200,"{}");
@@ -103,7 +120,10 @@ public class NetworkProxy {
       catch(Exception e){try{post("pvp:8081","/duel/end",body);}catch(Exception ignored){}throw e;}
     }else{
       if(!record.get("state").getAsString().equals("DONE"))throw new IllegalStateException("Duel unfinished");
-      if(record.has("winner")&&record.has("loser")&&announcedDuels.add(id))proxy.sendMessage(Component.text("Игрок "+record.get("winner").getAsString()+" выиграл "+record.get("loser").getAsString()+" в PVP",NamedTextColor.GOLD));
+      if(record.has("winner")&&record.has("loser")&&announcedDuels.add(id))proxy.sendMessage(Component.text("KiwyClub • PvP » ",ClubStyle.GOLD)
+        .append(Component.text("Игрок ",NamedTextColor.WHITE)).append(Component.text(record.get("winner").getAsString(),ClubStyle.GREEN))
+        .append(Component.text(" выиграл ",NamedTextColor.WHITE)).append(Component.text(record.get("loser").getAsString(),NamedTextColor.RED))
+        .append(Component.text(" в PVP",NamedTextColor.WHITE)));
       for(Player p:players){if(current(p).equals("survival"))continue;returning.add(p.getUniqueId());try{
         var target=proxy.getServer(drained.contains("survival")?"lobby":"survival").orElseThrow();
         if(!p.createConnectionRequest(target).connect().get(20,TimeUnit.SECONDS).isSuccessful())throw new IllegalStateException("Return rejected");

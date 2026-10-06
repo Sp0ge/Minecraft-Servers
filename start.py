@@ -4,6 +4,14 @@ shutil.copy('/opt/network-proxy.jar',p/'plugins/NetworkProxy.jar')
 shutil.copy('/opt/server-icon.png',p/'server-icon.png')
 for plugin in ('ViaVersion','ViaBackwards'):
  shutil.copy('/assets/'+plugin+'.jar',p/'plugins'/ (plugin+'.jar'))
+shutil.copy('/assets/VoiceChatVelocity.jar',p/'plugins/VoiceChatVelocity.jar')
+voice=p/'plugins/voicechat';voice.mkdir(exist_ok=True)
+voice_host=os.getenv('VOICE_PUBLIC_HOST','').strip()
+if '\n' in voice_host or '\r' in voice_host:raise ValueError('Invalid VOICE_PUBLIC_HOST')
+if not voice_host:voice_host='24454'
+elif voice_host.count(':')>1 and not voice_host.startswith('['):voice_host='['+voice_host+']:24454'
+elif ':' not in voice_host:voice_host+=':24454'
+(voice/'voicechat-proxy.properties').write_text('port=24454\nbind_address=0.0.0.0\nvoice_host='+voice_host+'\nallow_pings=true\n')
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
 block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 763\n  parkour: 777\n  pvp: 763\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
 text=via.read_text() if via.exists() else ''
