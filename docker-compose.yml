@@ -87,6 +87,7 @@ services:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: survival
       VERSION: "26.3"
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
       MEMORY: ${SURVIVAL_HEAP:-6G}
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:

@@ -123,6 +123,32 @@ UUID. Для переноса существующего прогресса ну
 Команды игрока ограничены справкой, переключением, авторизацией и командами режима;
 посторонние административные команды скрыты и блокируются при выполнении.
 
+## Подготовка чанков
+
+На Survival установлен **Chunky 1.5.3** (официальный JAR с проверкой SHA-256).
+В Ubuntu по умолчанию заранее создаётся квадрат с радиусом 640 блоков вокруг
+центра зоны спауна: 64×64 чанка случайного спауна плюс запас для обзора.
+Работа идёт только без игроков Survival, при TPS ≥18.5, среднем MSPT <40
+и более 10 ГБ свободного места. При входе игрока задача ставится на паузу;
+после перезапуска продолжается сохранённая задача. Каждый новый сезон получает
+свою подготовку. Миры Nether и End автоматически не генерируются.
+
+В локальном профиле автоматическая подготовка выключена. Её можно включить
+в `ServerData/settings.env`: `CHUNK_PREGEN_ENABLED=true`; для выключения — `false`.
+При отсутствии этой настройки используется значение `MAINTENANCE_ENABLED` профиля.
+Paper Survival использует 1 поток I/O и 2 потока генерации. Предгенерация сокращает
+работу при первом исследовании; фактическое ускорение и чтение с HDD не измерялись.
+
+Проверить прогресс через консоль:
+
+```bash
+docker exec mcservers-controller python /app/rcon.py survival "chunky progress"
+```
+
+Команды Chunky обычным игрокам недоступны. Сохранённые задачи — в
+`ServerData/survival/plugins/Chunky`, состояние подготовки сезона — в
+`ServerData/survival/plugins/NetworkBackend/chunky-state.json`.
+
 ## Версии, ветки и ресурсы
 
 | Ветка | Компонент |
@@ -162,5 +188,8 @@ proxy и controller по 1 ГБ: максимум 29 ГБ и 12 CPU квоты. 
 - [Adventure: книги](https://docs.papermc.io/adventure/book/)
 - [Adventure: TAB](https://docs.papermc.io/adventure/tablist/)
 - [Настройки AuthMe](https://github.com/AuthMe/AuthMeReloaded/blob/master/docs/config.md)
+- [Chunky: совместимость версий](https://hangar.papermc.io/pop4959/Chunky/versions)
+- [Chunky: управление задачами](https://github.com/pop4959/Chunky/wiki/Commands)
+- [Paper: потоки чанков](https://docs.papermc.io/paper/reference/global-configuration/#chunk-system)
 - [Docker: bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 - [Карта Pillars](https://minecraft-inside.ru/uploads/files/2025-11/PILLARS_-urmur-Studio-_-v1.0.6.zip)
