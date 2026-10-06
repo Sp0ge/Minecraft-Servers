@@ -18,7 +18,17 @@ if role=='pillars' and not (root/'world/level.dat').exists():
    dest=world.joinpath(*rel.parts)
    if name.endswith('/'):dest.mkdir(parents=True,exist_ok=True)
    else:dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(name))
+if role=='pillars' and os.getenv('ALLOW_TEST_MAP')!='true':
+ from result_hooks import install
+ install(root/'world')
 (root/'plugins').mkdir(exist_ok=True);shutil.copy('/shared/backend.jar',root/'plugins/NetworkBackend.jar')
+shutil.copy('/assets/VoiceChatPaper.jar',root/'plugins/VoiceChatPaper.jar')
+voice=root/'plugins/voicechat';voice.mkdir(exist_ok=True)
+import sys
+sys.path.insert(0,'/assets')
+from voice_ports import allocate
+voice_port=allocate()
+(voice/'voicechat-server.properties').write_text('port='+str(voice_port)+'\nbind_address=0.0.0.0\nvoice_host=\nmax_voice_distance=128.0\nallow_pings=true\n')
 if role=='lobby':
  shutil.copy('/assets/AuthMe.jar',root/'plugins/AuthMe.jar')
  config=root/'plugins/AuthMe/config.yml';config.parent.mkdir(exist_ok=True)
