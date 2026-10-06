@@ -8,8 +8,22 @@ import org.spongepowered.asm.mixin.injection.callback.*;
 @Mixin(ServerPlayNetworkHandler.class)
 public class PacketGuard {
  @Shadow public ServerPlayerEntity player;
+ @Unique private long kiwy$lastFreezeCorrection;
  @Inject(method="onPlayerMove",at=@At("HEAD"),cancellable=true)
- void move(PlayerMoveC2SPacket packet,CallbackInfo ci){if(Network.INSTANCE==null||Network.INSTANCE.server==null||!Network.INSTANCE.server.isOnThread())return;if(Network.INSTANCE!=null&&Network.INSTANCE.frozen(player)){player.networkHandler.requestTeleport(player.getX(),player.getY(),player.getZ(),player.getYaw(),player.getPitch());ci.cancel();}}
+ void move(PlayerMoveC2SPacket packet,CallbackInfo ci){
+  if(Network.INSTANCE==null||Network.INSTANCE.server==null||!Network.INSTANCE.server.isOnThread())return;
+  if(!Network.INSTANCE.frozen(player)){kiwy$lastFreezeCorrection=0;return;}
+  ci.cancel();
+  // A teleport causes the client to confirm and report its position again.
+  // Do not answer that unchanged position with another teleport.
+  if(!packet.changesPosition())return;
+  double dx=packet.getX(player.getX())-player.getX(),dy=packet.getY(player.getY())-player.getY(),dz=packet.getZ(player.getZ())-player.getZ();
+  if(dx*dx+dy*dy+dz*dz<=0.000001)return;
+  long now=System.nanoTime();
+  if(kiwy$lastFreezeCorrection!=0&&now-kiwy$lastFreezeCorrection<250000000L)return;
+  kiwy$lastFreezeCorrection=now;
+  player.networkHandler.requestTeleport(player.getX(),player.getY(),player.getZ(),player.getYaw(),player.getPitch());
+ }
  @Inject(method="onClickSlot",at=@At("HEAD"),cancellable=true)
  void click(ClickSlotC2SPacket packet,CallbackInfo ci){if(Network.INSTANCE==null||Network.INSTANCE.server==null||!Network.INSTANCE.server.isOnThread())return;if(Network.INSTANCE!=null&&(Network.INSTANCE.frozen(player)||Network.INSTANCE.arena&&(packet.getActionType()==net.minecraft.screen.slot.SlotActionType.THROW||packet.getSlot()==-999))){player.currentScreenHandler.syncState();ci.cancel();}}
  @Inject(method="onPlayerAction",at=@At("HEAD"),cancellable=true)

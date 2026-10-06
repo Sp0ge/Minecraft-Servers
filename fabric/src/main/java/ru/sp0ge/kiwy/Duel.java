@@ -51,7 +51,10 @@ public final class Duel {
  void finish(UUID loser,String reason){String id=locked.get(loser);if(id==null||!matches.containsKey(id))return;try{finishRecord(Journal.read(id),reason,engaged.contains(id)?loser:null);}catch(Exception e){throw new IllegalStateException(e);}}
  void finishRecord(JsonObject r,String reason,UUID loser){String id=r.get("id").getAsString();try{if(Files.exists(Journal.path(id)))r=Journal.read(id);if(loser!=null&&!r.has("winner"))for(JsonElement e:r.getAsJsonArray("players")){JsonObject member=e.getAsJsonObject();r.addProperty(member.get("uuid").getAsString().equals(loser.toString())?"loser":"winner",member.get("name").getAsString());}r.addProperty("state","DONE");Journal.write(r);}catch(Exception e){throw new IllegalStateException(e);}matches.remove(id);engaged.remove(id);
   if(r.has("room")){int room=r.get("room").getAsInt();rooms.remove(room);for(int cx=(room%8)*16;cx<(room%8)*16+3;cx++)for(int cz=(room/8)*16;cz<(room/8)*16+3;cz++)n.server.getOverworld().setChunkForced(cx,cz,false);}
-  for(JsonElement e:r.getAsJsonArray("players")){UUID uuid=UUID.fromString(e.getAsJsonObject().get("uuid").getAsString());locked.remove(uuid);ServerPlayerEntity p=n.server.getPlayerManager().getPlayer(uuid);if(p!=null){p.getInventory().clear();Network.say(p,reason+" Возвращаемся в Survival.");}}
+  String result=r.has("winner")&&r.has("loser")
+   ?"§6Победитель PvP: §a"+r.get("winner").getAsString()+"§f. Проигравший: §c"+r.get("loser").getAsString()+"§f. "
+   :"PvP завершён без победителя. ";
+  for(JsonElement e:r.getAsJsonArray("players")){UUID uuid=UUID.fromString(e.getAsJsonObject().get("uuid").getAsString());locked.remove(uuid);ServerPlayerEntity p=n.server.getPlayerManager().getPlayer(uuid);if(p!=null){p.getInventory().clear();Network.say(p,result+reason+" Возвращаемся в Survival.");}}
   CompletableFuture.runAsync(()->{for(int i=0;i<10;i++)try{proxy("/duel-return",id);return;}catch(Exception e){try{Thread.sleep(1000);}catch(InterruptedException stopped){return;}}System.err.println("Duel return delayed, journal preserved: "+id);});
  }
  void leave(ServerPlayerEntity p){requests.remove(p.getUuid());if(n.arena)finish(p.getUuid(),"Соперник отключился.");}

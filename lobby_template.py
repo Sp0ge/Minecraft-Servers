@@ -94,6 +94,12 @@ def export(source,output):
    if spawn:break
   if spawn:break
  if not spawn:raise ValueError('No safe lobby spawn near supplied spawn')
+ # Illuminate every free space above the map's surfaces, including interiors.
+ # Only air is replaced; the invisible block has no collision or visible model.
+ light=max(palette)+1;palette[light]='minecraft:light[level=15]';plane=width*length;lights=0
+ for i in range(len(blocks)-1,plane-1,-1):
+  if blocks[i]==air and blocks[i-plane]!=air and (i+plane>=len(blocks) or blocks[i+plane] in (air,light)):
+   blocks[i]=light;lights+=1
  version=schematic['DataVersion'];regions={}
  for cz in range(math.ceil(length/16)):
   for cx in range(math.ceil(width/16)):
@@ -149,7 +155,7 @@ def export(source,output):
  with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as z:
   z.writestr('level.dat',gzip.compress(root({'Data':compound(level)}),mtime=0))
   z.writestr('region/r.0.0.mca',header+body)
-  z.writestr('kiwy-map.json',json.dumps({'spawn':spawn,'source':'by-kubj-lobby-japan-free.schem','source_data_version':version,'dimensions':[width,height,length]}))
+  z.writestr('kiwy-map.json',json.dumps({'spawn':spawn,'source':'by-kubj-lobby-japan-free.schem','source_data_version':version,'dimensions':[width,height,length],'invisible_lights':lights,'light_level':15}))
  print('Exported',output,'spawn',spawn)
 
 if __name__=='__main__':

@@ -5,6 +5,8 @@ api-version: '1.21'
 load: STARTUP
 softdepend: [AuthMe, Chunky]
 commands:
+  kiwypillarsresult:
+    description: Internal Pillars map result bridge
   home:
     description: Teleport to your bed
   tpa:

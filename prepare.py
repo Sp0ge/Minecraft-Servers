@@ -3,6 +3,7 @@ import argparse,hashlib,json,urllib.request,zipfile,shutil
 from pathlib import Path
 parser=argparse.ArgumentParser();parser.add_argument('--assets',default='.runtime/assets');parser.add_argument('--map',required=True);parser.add_argument('--lobby-map',required=True)
 args=parser.parse_args();dest=Path(args.assets);dest.mkdir(parents=True,exist_ok=True)
+shutil.copyfile(Path(__file__).with_name('voice_ports.py'),dest/'voice_ports.py')
 for url,name,digest in json.loads(Path(__file__).with_name('assets.lock.json').read_text()):
  p=dest/name
  if not p.exists() or hashlib.sha256(p.read_bytes()).hexdigest()!=digest:

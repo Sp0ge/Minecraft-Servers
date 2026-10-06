@@ -38,5 +38,15 @@
     "https://meta.fabricmc.net/v2/versions/loader/1.20.1/0.19.5/1.1.1/server/jar",
     "fabric-server-1.20.1.jar",
     "084080ff36433a56fb26b90e8e5392d6daf4883586ec7198179476a0e184b6a7"
+  ],
+  [
+    "https://cdn.modrinth.com/data/9eGKb6K1/versions/ES87t4lm/voicechat-velocity-2.6.18.jar",
+    "VoiceChatVelocity.jar",
+    "b03cebc45c1583edf8c7456fa67f0a6248eb95a856249378173cc1ea8b8d0d68"
+  ],
+  [
+    "https://cdn.modrinth.com/data/9eGKb6K1/versions/EJth3OAr/voicechat-bukkit-2.6.24.jar",
+    "VoiceChatPaper.jar",
+    "af3d4e2ad318d3065959248c1370ae32a619752cb4d2a4fec2f7a79b10067769"
   ]
 ]

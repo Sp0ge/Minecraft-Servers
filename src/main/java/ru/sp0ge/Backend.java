@@ -28,7 +28,7 @@ public class Backend extends JavaPlugin implements Listener {
   final Gson json=new Gson(); HttpServer http; ExecutorService httpExecutor; boolean visited=false, accepting=true;
   volatile String snapshot="{}"; final Map<UUID,Request> requests=new HashMap<>();SurvivalRules rules;ParkourRules parkour;DuelRules duels;
   static final String MENU_TITLE="§a§lKiwyClub §8• §0Режимы";
-  ItemStack guidebook; volatile boolean authReady=false;
+  ItemStack guidebook; volatile boolean authReady=false;PillarsResults pillarsResults;
   record Request(UUID sender,long expires) {}
   public ChunkGenerator getDefaultWorldGenerator(String name,String id) {
     return new ChunkGenerator() {
@@ -63,6 +63,7 @@ public class Backend extends JavaPlugin implements Listener {
     if(role.equals("survival")&&Boolean.parseBoolean(System.getenv().getOrDefault("CHUNK_PREGEN_ENABLED","false")))new ChunkPreparation(this);
     if(role.equals("survival")){rules=new SurvivalRules(this);getServer().getPluginManager().registerEvents(rules,this);}
     if(role.equals("parkour")){parkour=new ParkourRules(this);getServer().getPluginManager().registerEvents(parkour,this);}
+    if(role.equals("pillars"))pillarsResults=new PillarsResults(this);
     if(role.equals("survival")||role.equals("pvp")){duels=new DuelRules(this);getServer().getPluginManager().registerEvents(duels,this);}
     getServer().getMessenger().registerOutgoingPluginChannel(this,"BungeeCord");
     if(role.equals("lobby")) getServer().getScheduler().runTask(this,()-> {
@@ -223,6 +224,10 @@ public class Backend extends JavaPlugin implements Listener {
   }
   boolean hazard(Block b){return b.isLiquid() || Set.of(Material.FIRE,Material.SOUL_FIRE,Material.MAGMA_BLOCK,Material.CAMPFIRE,Material.SOUL_CAMPFIRE,Material.CACTUS,Material.POWDER_SNOW,Material.SWEET_BERRY_BUSH).contains(b.getType());}
   public boolean onCommand(CommandSender sender,Command cmd,String label,String[] args){
+    if(cmd.getName().equals("kiwypillarsresult")){
+      if(!(sender instanceof Player)&&pillarsResults!=null&&args.length==1)pillarsResults.report(args[0]);
+      return true;
+    }
     if(!(sender instanceof Player p))return false;
     if(parkour!=null&&(cmd.getName().equals("checkpoint")||cmd.getName().equals("restart"))){parkour.back(p,cmd.getName().equals("restart"));return true;}
     if(duels!=null&&duels.command(p,cmd.getName(),args))return true;

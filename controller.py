@@ -20,6 +20,24 @@ ARENAS[SPARE]={'state':'STOPPED','generation':None,'players':[], 'reservations':
 DATA_HOST=os.getenv('DATA_HOST_DIR','')
 TZ=ZoneInfo('Europe/Moscow'); shutting_down=False
 
+def voice_port(instance):
+ if not instance or len(instance)>64:raise ValueError('Invalid voice instance')
+ container=CLIENT.containers.get(instance)
+ if not container.name.startswith(PREFIX) or container.labels.get('mcservers.managed')!='true':raise ValueError('Unmanaged voice instance')
+ if container.name not in {PREFIX+n for n in ('lobby','survival','pvp','parkour')} and not container.labels.get('mcservers.arena'):raise ValueError('Not a game server')
+ first=int(os.getenv('VOICE_PORT_MIN','24460'));last=int(os.getenv('VOICE_PORT_MAX','24559'))
+ if not 1024<=first<=last<=65535 or first<=24454<=last:raise ValueError('Invalid voice port range')
+ with LOCK:
+  path=STATE/'voice-ports.json';leases=json.loads(path.read_text()) if path.exists() else {}
+  live={c.id for c in CLIENT.containers.list(all=True,filters={'label':'mcservers.managed=true'})}
+  leases={key:port for key,port in leases.items() if key in live and first<=port<=last}
+  if container.id not in leases:
+   used=set(leases.values());available=next((p for p in range(first,last+1) if p not in used),None)
+   if available is None:raise RuntimeError('Voice port range exhausted')
+   leases[container.id]=available
+  temp=path.with_suffix('.tmp');temp.write_text(json.dumps(leases));temp.replace(path)
+  return leases[container.id]
+
 def api(host,path,body=None):
  req=urllib.request.Request('http://'+host+path,data=body.encode() if body is not None else None,
    headers={'Authorization':'Bearer '+TOKEN})
@@ -180,6 +198,10 @@ class Handler(BaseHTTPRequestHandler):
   u=urllib.parse.urlparse(self.path)
   if u.path=='/status':
    with LOCK:self.reply(200,{'arenas':ARENAS,'test_map':os.getenv('ALLOW_TEST_MAP')=='true','maintenance':maintenance_state})
+  elif u.path=='/voice-port':
+   try:self.reply(200,{'port':voice_port(urllib.parse.parse_qs(u.query)['instance'][0])})
+   except (KeyError,ValueError,docker.errors.NotFound):self.reply(400,{'error':'Invalid voice instance'})
+   except Exception as e:logging.exception('Voice port allocation failed');self.reply(503,{'error':'Voice port unavailable'})
   elif u.path=='/select':
    try:
     q=urllib.parse.parse_qs(u.query);player=str(uuid.UUID(q['uuid'][0]));self.reply(200,select(q['target'][0],player))
