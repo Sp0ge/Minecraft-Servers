@@ -2,6 +2,9 @@ import os, pathlib, shutil, zipfile, json, secrets, datetime, re
 root=pathlib.Path('/data');root.mkdir(exist_ok=True);os.chdir(root)
 if (root/'.wipe-in-progress').exists():raise RuntimeError('Interrupted wipe; restore or finish manually before startup')
 role=os.getenv('ROLE','survival');version=os.getenv('VERSION','1.21.10')
+if role=='lobby':
+ from map_install import install
+ install(root,'/assets/lobby-map.zip')
 if role=='pillars' and not (root/'world/level.dat').exists():
  archive=pathlib.Path('/assets/pillars.zip')
  if not archive.exists():raise RuntimeError('Pillars map missing')
@@ -63,7 +66,6 @@ world-settings:
     mob-spawn-range: 4
 ''')
 bukkit='settings:\n  allow-end: '+('true' if role=='survival' else 'false')+'\n'
-if role=='lobby':bukkit+='worlds:\n  world:\n    generator: NetworkBackend\n'
 (root/'bukkit.yml').write_text(bukkit)
 (root/'server.properties').write_text('''server-port=25565
 online-mode=false
@@ -71,7 +73,8 @@ enforce-secure-profile=false
 level-name=world
 level-seed='''+seed+'''
 spawn-protection=0
-enable-command-block=true
+enable-command-block=false
+allow-nether=false
 allow-flight=true
 max-players='''+os.getenv('MAX_PLAYERS','30')+'''
 view-distance='''+('6' if role=='survival' else '4')+'''
