@@ -89,7 +89,7 @@ public class NetworkProxy {
           if(!Set.of("solo","red","blue","none").contains(kind))throw new IllegalArgumentException();
           List<String> winners=new ArrayList<>();var names=report.getAsJsonArray("winners");
           if(names.size()>16)throw new IllegalArgumentException();
-          for(var e:names){String name=e.getAsString();if(!name.matches("[A-Za-z0-9_]{1,16}")||winners.contains(name))throw new IllegalArgumentException();winners.add(name);}
+          for(var e:names){String winnerName=e.getAsString();if(!winnerName.matches("[A-Za-z0-9_]{1,16}")||winners.contains(winnerName))throw new IllegalArgumentException();winners.add(winnerName);}
           if(kind.equals("solo")&&winners.size()!=1||kind.equals("none")&&!winners.isEmpty()||Set.of("red","blue").contains(kind)&&winners.isEmpty())throw new IllegalArgumentException();
           if(announcedPillars.add(id)){
             String result=switch(kind){case "solo"->"Игрок "+winners.getFirst()+" победил в Pillars!";case "red"->"В Pillars победила красная команда: "+String.join(", ",winners);case "blue"->"В Pillars победила синяя команда: "+String.join(", ",winners);default->"Матч Pillars завершён без победителей.";};
