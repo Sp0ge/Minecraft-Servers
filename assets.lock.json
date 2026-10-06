@@ -33,5 +33,10 @@
     "https://fill-data.papermc.io/v1/objects/35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8/velocity-4.2.0-30.jar",
     "velocity.jar",
     "35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8"
+  ],
+  [
+    "https://hangarcdn.papermc.io/plugins/pop4959/Chunky/versions/1.5.3/PAPER/Chunky-Bukkit-1.5.3.jar",
+    "Chunky.jar",
+    "530d2c7430a96a39957391b7088be144daa3108f7665896d1c23aa8dd4af32f3"
   ]
 ]

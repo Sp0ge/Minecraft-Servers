@@ -3,7 +3,7 @@ version: 1.0.0
 main: ru.sp0ge.Backend
 api-version: '1.21'
 load: STARTUP
-softdepend: [AuthMe]
+softdepend: [AuthMe, Chunky]
 commands:
   home:
     description: Teleport to your bed

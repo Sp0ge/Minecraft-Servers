@@ -60,6 +60,7 @@ public class Backend extends JavaPlugin implements Listener {
     });
     try { token=Files.readString(Path.of("/secrets/api-token")).trim(); } catch(Exception e){throw new RuntimeException(e);}
     getServer().getPluginManager().registerEvents(this,this);
+    if(role.equals("survival")&&Boolean.parseBoolean(System.getenv().getOrDefault("CHUNK_PREGEN_ENABLED","false")))new ChunkPreparation(this);
     if(role.equals("survival")){rules=new SurvivalRules(this);getServer().getPluginManager().registerEvents(rules,this);}
     if(role.equals("parkour")){parkour=new ParkourRules(this);getServer().getPluginManager().registerEvents(parkour,this);}
     if(role.equals("survival")||role.equals("pvp")){duels=new DuelRules(this);getServer().getPluginManager().registerEvents(duels,this);}
