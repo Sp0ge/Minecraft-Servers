@@ -178,7 +178,7 @@ public class NetworkProxy {
       if(name.equals("pvp"))try{if(!call("pvp:8081","/duel/allowed?uuid="+p.getUniqueId()).get("allowed").getAsBoolean())event.setResult(ServerPreConnectEvent.ServerResult.denied());}catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
       if(name.equals("pillars")){event.setResult(ServerPreConnectEvent.ServerResult.denied());route(p,"pillars");return;}
       if(Set.of("survival","parkour","pvp").contains(name))try{
-        var req=HttpRequest.newBuilder(URI.create("http://"+name+":8081/admit?name="+p.getUsername())).timeout(Duration.ofSeconds(8)).header("Authorization","Bearer "+token).POST(HttpRequest.BodyPublishers.noBody()).build();
+        var req=HttpRequest.newBuilder(URI.create("http://"+name+":8081/admit?uuid="+p.getUniqueId())).timeout(Duration.ofSeconds(8)).header("Authorization","Bearer "+token).POST(HttpRequest.BodyPublishers.noBody()).build();
         if(client.send(req,HttpResponse.BodyHandlers.ofString()).statusCode()!=200){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Не удалось подтвердить допуск survival.");}
       }catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
       if(name.startsWith("pillars_"))try{

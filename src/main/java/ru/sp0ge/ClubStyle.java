@@ -37,7 +37,7 @@ final class ClubStyle {
    text(p,"PvP начинается из Survival: /pvp <игрок>.");command(p,"/help all","все команды и правила");text(p,"В сети до 64 игроков. Книга доступна в лобби.");
   }
   if(topic.equals("account")||topic.equals("all")){
-   section(p,"Вход и аккаунт · в лобби");command(p,"/register <пароль> <повтор>","создать аккаунт");command(p,"/login <пароль>","войти");
+   section(p,"Вход и аккаунт · в лобби");text(p,"Вход с лицензионным Java-аккаунтом. Скин берётся из Minecraft-профиля.");command(p,"/register <пароль> <повтор>","создать аккаунт");command(p,"/login <пароль>","войти");
    command(p,"/changepassword <старый> <новый>","сменить пароль");command(p,"/logout","выйти из аккаунта");
    text(p,"После входа выбери режим через /server или компас.");
   }
