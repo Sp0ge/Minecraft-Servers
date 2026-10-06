@@ -6,12 +6,9 @@ role=os.getenv('ROLE','survival')
 marker=root/'kiwy-runtime.json'
 if (root/'world/level.dat').exists() and (not marker.exists() or json.loads(marker.read_text()).get('minecraft')!='1.20.1'):raise RuntimeError('Refusing downgrade/import of unmarked world. Use separate Fabric data directory.')
 marker.write_text(json.dumps({'minecraft':'1.20.1','loader':'fabric'}))
+from season import prepare_season
+prepare_season(root)
 season=root/'season.json'
-if not (root/'world/level.dat').exists():
- old=json.loads(season.read_text()).get('seed') if season.exists() else None;seed=secrets.randbits(63)
- while seed==old:seed=secrets.randbits(63)
- season.write_text(json.dumps({'id':secrets.token_hex(16),'seed':seed,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}))
- (root/'kiwy-settled.json').unlink(missing_ok=True)
 lock=json.loads(pathlib.Path('/assets/fabric-1.20.1/mods.lock.json').read_text());mods=root/'mods';mods.mkdir(exist_ok=True)
 expected={f['filename'] for f in lock['files'] if 'server' in f['sides']}|{'kiwy-fabric.jar'}
 # Only prune artifacts previously managed by this installer; preserve administrator additions.
