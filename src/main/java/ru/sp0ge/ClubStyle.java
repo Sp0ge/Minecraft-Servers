@@ -42,7 +42,7 @@ final class ClubStyle {
    text(p,"После входа выбери режим через /server или компас.");
   }
   if(topic.equals("survival")||topic.equals("all")){
-   section(p,"Survival · дом и приключения");command(p,"/server survival","перейти в выживание");command(p,"/home","к текущей кровати; дом только один");
+   section(p,"Survival · Fabric 1.20.1");text(p,"Для Survival и PvP нужна клиентская сборка KiwyClub.");command(p,"/openpac","партии и защита территории; карта Xaero — меню приватов");command(p,"/server survival","перейти в выживание");command(p,"/home","к текущей кровати; дом только один");
    command(p,"/tpa <игрок>","попросить телепортацию на 60 секунд");command(p,"/tpaccept","принять запрос");command(p,"/tpdeny","отклонить запрос");
    text(p,"Первый спаун: квадрат 64×64 чанка. Чат: радиус 128 блоков.");text(p,"Входы и смерти видны всему Survival.");
    text(p,"Перезапуск в 05:00 МСК; предупреждения за 20/10/5 минут.");text(p,"Вайп каждые 3 месяца: новый сид, мир и инвентарь.");

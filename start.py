@@ -5,7 +5,7 @@ shutil.copy('/opt/server-icon.png',p/'server-icon.png')
 for plugin in ('ViaVersion','ViaBackwards'):
  shutil.copy('/assets/'+plugin+'.jar',p/'plugins'/ (plugin+'.jar'))
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
-block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 777\n  parkour: 777\n  pvp: 777\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
+block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 763\n  parkour: 777\n  pvp: 763\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
 text=via.read_text() if via.exists() else ''
 if 'velocity-servers:' in text:text=re.sub(r'(?m)^velocity-servers:\n(?:[ \t]+[^\n]*\n)*',block,text)
 else:text+='\n'+block

@@ -112,7 +112,7 @@ public class NetworkProxy {
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
-    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));
+    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","openpac","opac"));
     if(server.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
     if(server.equals("pvp"))result.add("pvpleave");
     if(server.startsWith("pillars_"))result.add("trigger");
@@ -173,6 +173,7 @@ public class NetworkProxy {
     Player p=event.getPlayer();String name=event.getOriginalServer().getServerInfo().getName();
     if(current(p).equals("pvp")&&!returning.contains(p.getUniqueId())){event.setResult(ServerPreConnectEvent.ServerResult.denied());return null;}
     if(name.equals("lobby"))return null;
+    if(Set.of("survival","pvp").contains(name)&&p.getProtocolVersion().getProtocol()!=763){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Survival и PvP: установите сборку KiwyClub Fabric 1.20.1. ViaVersion не заменяет игровые моды.");return null;}
     return EventTask.async(()->{
       if(!auth(p)||drained.contains(name)){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Вход закрыт: нужна авторизация или сервер на обслуживании.");return;}
       if(name.equals("pvp"))try{if(!call("pvp:8081","/duel/allowed?uuid="+p.getUniqueId()).get("allowed").getAsBoolean())event.setResult(ServerPreConnectEvent.ServerResult.denied());}catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
