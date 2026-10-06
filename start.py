@@ -19,6 +19,10 @@ if role=='pillars' and not (root/'world/level.dat').exists():
    if name.endswith('/'):dest.mkdir(parents=True,exist_ok=True)
    else:dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(name))
 (root/'plugins').mkdir(exist_ok=True);shutil.copy('/shared/backend.jar',root/'plugins/NetworkBackend.jar')
+if role=='survival':
+ shutil.copy('/assets/Chunky.jar',root/'plugins/Chunky.jar')
+ chunky=root/'plugins/Chunky';chunky.mkdir(exist_ok=True)
+ if not (chunky/'config.yml').exists():(chunky/'config.yml').write_text('version: 2\nlanguage: ru\ncontinue-on-restart: false\nforce-load-existing-chunks: false\nsilent: false\nupdate-interval: 60\n')
 if role=='lobby':
  shutil.copy('/assets/AuthMe.jar',root/'plugins/AuthMe.jar')
  config=root/'plugins/AuthMe/config.yml';config.parent.mkdir(exist_ok=True)
@@ -40,6 +44,9 @@ proxies:
     enabled: true
     online-mode: true
     secret: "'''+secret+'''"
+chunk-system:
+  io-threads: 1
+  worker-threads: 2
 block-updates:
   disable-noteblock-updates: false
 ''')
