@@ -62,4 +62,23 @@ class ControllerTests(unittest.TestCase):
   self.assertEqual(self.c.api.call_count,3)
   now=datetime.datetime(2026,10,6,5,0,tzinfo=self.c.TZ);self.c.schedule(now);self.c.schedule(now)
   self.c.MAINTENANCE_WORKER.submit.assert_called_once_with(self.c.maintain,False)
+ def test_voice_ports_are_distinct_stable_and_reclaimed(self):
+  from types import SimpleNamespace
+  servers=[SimpleNamespace(id=str(i),name='mcservers-'+name,labels={'mcservers.managed':'true'}) for i,name in enumerate(('lobby','survival','pvp'))]
+  self.c.CLIENT.containers.get.side_effect=lambda key:next(c for c in servers if c.id==key)
+  self.c.CLIENT.containers.list.side_effect=lambda **kwargs:list(servers)
+  with patch.dict(os.environ,{'VOICE_PORT_MIN':'24460','VOICE_PORT_MAX':'24461'}):
+   self.assertEqual(self.c.voice_port('0'),24460)
+   self.assertEqual(self.c.voice_port('1'),24461)
+   self.assertEqual(self.c.voice_port('0'),24460)
+   with self.assertRaises(RuntimeError):self.c.voice_port('2')
+   servers.pop(0)
+   self.assertEqual(self.c.voice_port('2'),24460)
+ def test_voice_allocator_rejects_proxy_and_reserved_public_port(self):
+  from types import SimpleNamespace
+  self.c.CLIENT.containers.get.return_value=SimpleNamespace(id='id',name='mcservers-proxy',labels={'mcservers.managed':'true'})
+  with self.assertRaises(ValueError):self.c.voice_port('id')
+  self.c.CLIENT.containers.get.return_value.name='mcservers-lobby'
+  with patch.dict(os.environ,{'VOICE_PORT_MIN':'24454','VOICE_PORT_MAX':'24460'}):
+   with self.assertRaises(ValueError):self.c.voice_port('id')
 if __name__=='__main__':unittest.main()

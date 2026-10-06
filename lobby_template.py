@@ -151,6 +151,7 @@ def export(source,output):
   'Difficulty':byte(0),'hardcore':byte(0),'allowCommands':byte(0),'initialized':byte(1),'Time':long(0),'DayTime':long(6000),
   'SpawnX':integer(spawn[0]),'SpawnY':integer(spawn[1]),'SpawnZ':integer(spawn[2]),'SpawnAngle':tag(5,0.0),
   'WorldGenSettings':compound({'bonus_chest':byte(0),'seed':long(0),'generate_features':byte(0),'dimensions':compound(dims)}),
+  'DragonFight':compound({'DragonKilled':byte(1),'PreviouslyKilled':byte(1),'NeedsStateScanning':byte(0),'IsRespawning':byte(0),'Gateways':listing(3,[])}),
   'GameRules':compound({k:string(v) for k,v in {'doDaylightCycle':'false','doWeatherCycle':'false','doMobSpawning':'false','randomTickSpeed':'0','spawnRadius':'0'}.items()})}
  with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as z:
   z.writestr('level.dat',gzip.compress(root({'Data':compound(level)}),mtime=0))

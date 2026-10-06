@@ -117,14 +117,14 @@ def spawn(name,reset=False):
    opts={'type':'none','o':'bind','device':DATA_HOST+'/arenas/'+volname}
   CLIENT.volumes.create(volname,driver='local',driver_opts=opts,labels={'mcservers.arena':name,'mcservers.managed':'true'})
   env={'ROLE':'pillars','VERSION':'1.21.10','MEMORY':os.getenv('ARENA_HEAP','2G'),
-   'MAX_PLAYERS':'16','GENERATION':generation,'ALLOW_TEST_MAP':os.getenv('ALLOW_TEST_MAP','false')}
+   'MAX_PLAYERS':'16','GENERATION':generation,'NETWORK_REVISION':os.getenv('NETWORK_REVISION','initial'),'ALLOW_TEST_MAP':os.getenv('ALLOW_TEST_MAP','false')}
   mounts=[Mount('/data',volname,type='volume'),data_mount('/secrets','secrets',True),
    data_mount('/shared','plugins',True),Mount('/assets',os.environ['ASSETS_HOST_DIR'],type='bind',read_only=True)]
   if shutting_down:raise RuntimeError('Контроллер завершает работу')
   c=CLIENT.containers.create('minecraft-pillars:local',name=PREFIX+name,environment=env,mounts=mounts,
     network=NETWORK,mem_limit=int(float(os.getenv('ARENA_LIMIT_GIB','3'))*1024**3),
     memswap_limit=int(float(os.getenv('ARENA_LIMIT_GIB','3'))*1024**3),nano_cpus=int(float(os.getenv('ARENA_CPUS','1.2'))*1e9),
-    labels={'mcservers.managed':'true','mcservers.arena':name,'mcservers.generation':generation,'mcservers.volume':volname},
+    labels={'mcservers.managed':'true','mcservers.arena':name,'mcservers.generation':generation,'mcservers.volume':volname,'mcservers.revision':os.getenv('NETWORK_REVISION','initial')},
     cgroup_parent=os.getenv('MC_CGROUP_PARENT') or None,
     restart_policy={'Name':'no'},log_config=docker.types.LogConfig(type='json-file',config={'max-size':'10m','max-file':'3'}))
   # Replace endpoint with a stable DNS alias before starting the JVM.
@@ -291,7 +291,9 @@ def loop():
      a['reservations']={p:t for p,t in a['reservations'].items() if t>now and p not in report['players']}
      a['state']='WAITING' if report['accepting'] else 'IN_GAME';a['last_seen']=now
      if not a.get('ready_at'):a['ready_at']=now
-     action=empty_action(n,a,now)
+     container=CLIENT.containers.get(PREFIX+n)
+     stale=container.labels.get('mcservers.revision')!=os.getenv('NETWORK_REVISION','initial')
+     action=('reset' if n in ('pillars_1',SPARE) else 'retire') if stale and not a['players'] and not a['reservations'] else empty_action(n,a,now)
      if action:
       a['state']='RESETTING';persist()
       if action=='reset':WORKER.submit(spawn,n,True)

@@ -74,7 +74,7 @@ public class Network implements ModInitializer {
  }
  boolean safelyMissingBed(ServerPlayerEntity p){ServerWorld w=server.getWorld(p.getSpawnPointDimension());return w==null||!(w.getBlockState(p.getSpawnPointPosition()).getBlock() instanceof BedBlock)&&!w.getBlockState(p.getSpawnPointPosition()).isOf(Blocks.RESPAWN_ANCHOR);}
  public boolean frozen(ServerPlayerEntity p){return pending.contains(p.getUuid())||(!arena&&duels!=null&&duels.locked.containsKey(p.getUuid()));}
- public Set<String> commands(){Set<String> roots=new HashSet<>(Set.of("help","server"));if(arena)roots.add("pvpleave");else roots.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","opac","oclaims","oparties"));return roots;}
+ public Set<String> commands(){Set<String> roots=new HashSet<>(Set.of("help","server","voicechat"));if(arena)roots.add("pvpleave");else roots.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","opac","oclaims","oparties"));return roots;}
  void command(ServerPlayerEntity p,String name,String otherName){
   if(duels.command(p,name,otherName))return;if(arena)return;if(frozen(p)){say(p,"Подождите завершения подготовки.");return;}
   switch(name){

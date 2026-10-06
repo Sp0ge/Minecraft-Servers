@@ -37,7 +37,7 @@ public final class Guidebook {
   pages.add(page("PvP · возврат","После смерти оба","назад в Survival.","Исходные вещи","вернутся целиком.","Расходники и износ","не теряются.","/pvpleave","Завершить бой.","Бой: до 10 минут."));
   pages.add(page("Победы и справка","Победу видит","вся сеть KiwyClub.","Уход соперника","бой заканчивается.","Вещи сохраняются.","","/help","Справка в чате.","Нажми команду."));
   pages.add(page("Приваты и партии","/opac","Твои настройки.","/oclaims","Защита чанков.","/oparties","Партии игроков.","Карта Xaero тоже","управляет приватами.","Только в Survival."));
-  pages.add(page("Клиент и общение","Survival и PvP:","Fabric 1.20.1 +","сборка KiwyClub.","Проверка — в лобби.","Скачать сборку","Голос, эмоции,","мини-карта — через","настройки игры."));
+  pages.add(page("Клиент и общение","Fabric 1.20.1 +","сборка KiwyClub.","Проверка — в лобби.","Скачать сборку","Голос во всех","режимах: клавиша V.","/voicechat","Нужен клиентский","Simple Voice Chat."));
   meta.pages(pages);book.setItemMeta(meta);return book;
  }
  static Component header(String title){return Component.empty().append(Component.text("KiwyClub",NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD))

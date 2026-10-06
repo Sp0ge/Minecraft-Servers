@@ -188,7 +188,7 @@ public class Backend extends JavaPlugin implements Listener {
   @EventHandler public void drag(org.bukkit.event.inventory.InventoryDragEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void damage(EntityDamageEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   Set<String> playerCommands(){
-    Set<String> result=new HashSet<>(Set.of("server","help"));
+    Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(role.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
     if(role.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));
     if(role.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
@@ -224,10 +224,6 @@ public class Backend extends JavaPlugin implements Listener {
   }
   boolean hazard(Block b){return b.isLiquid() || Set.of(Material.FIRE,Material.SOUL_FIRE,Material.MAGMA_BLOCK,Material.CAMPFIRE,Material.SOUL_CAMPFIRE,Material.CACTUS,Material.POWDER_SNOW,Material.SWEET_BERRY_BUSH).contains(b.getType());}
   public boolean onCommand(CommandSender sender,Command cmd,String label,String[] args){
-    if(cmd.getName().equals("kiwypillarsresult")){
-      if(!(sender instanceof Player)&&pillarsResults!=null&&args.length==1)pillarsResults.report(args[0]);
-      return true;
-    }
     if(!(sender instanceof Player p))return false;
     if(parkour!=null&&(cmd.getName().equals("checkpoint")||cmd.getName().equals("restart"))){parkour.back(p,cmd.getName().equals("restart"));return true;}
     if(duels!=null&&duels.command(p,cmd.getName(),args))return true;
