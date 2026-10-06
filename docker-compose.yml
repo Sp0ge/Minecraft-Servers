@@ -11,18 +11,19 @@ services:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-plugins:local
     build:
-      context: ${SOURCE_ROOT:-./.runtime/source}/infra
+      context: ${SOURCE_ROOT:-./ServerData/source}/infra
       dockerfile: Dockerfile.plugins
-    volumes: [plugins:/shared]
+    volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
     logging: *logging
   controller:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-controller:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/infra
+    build: ${SOURCE_ROOT:-./ServerData/source}/infra
     container_name: mcservers-controller
     stop_grace_period: 900s
     environment:
-      ASSETS_HOST_DIR: ${PROJECT_ROOT:?Set PROJECT_ROOT to the checkout path}/.runtime/assets
+      ASSETS_HOST_DIR: ${DATA_ROOT:-./ServerData}/assets
+      DATA_HOST_DIR: ${DATA_ROOT:?Run start.sh to resolve the data directory}
       MAX_ARENAS: "5"
       ARENA_HEAP: ${ARENA_HEAP:-1536M}
       ARENA_LIMIT_GIB: ${ARENA_LIMIT_GIB:-2.5}
@@ -33,9 +34,10 @@ services:
       BACKUP_KEEP: "2"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - secrets:/secrets
-      - state:/state
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets
+      - ${DATA_ROOT:-./ServerData}/state:/state
+      - ${DATA_ROOT:-./ServerData}/arenas:/arena-data
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     mem_limit: 1g
     cpus: 0.5
     labels: *managed
@@ -50,7 +52,7 @@ services:
   lobby:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-lobby:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/lobby
+    build: ${SOURCE_ROOT:-./ServerData/source}/lobby
     container_name: mcservers-lobby
     environment:
       ROLE: lobby
@@ -58,10 +60,10 @@ services:
       MEMORY: ${LOBBY_HEAP:-768M}
       MAX_PLAYERS: "64"
     volumes:
-      - lobby:/data
-      - plugins:/shared:ro
-      - secrets:/secrets:ro
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/lobby:/data
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -75,7 +77,7 @@ services:
   survival:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-survival:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/survival
+    build: ${SOURCE_ROOT:-./ServerData/source}/survival
     container_name: mcservers-survival
     environment:
       ROLE: survival
@@ -83,11 +85,11 @@ services:
       MEMORY: ${SURVIVAL_HEAP:-6G}
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
-      - survival:/data
-      - duels:/duels
-      - plugins:/shared:ro
-      - secrets:/secrets:ro
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/survival:/data
+      - ${DATA_ROOT:-./ServerData}/duels:/duels
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -101,7 +103,7 @@ services:
   parkour:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-parkour:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/parkour
+    build: ${SOURCE_ROOT:-./ServerData/source}/parkour
     container_name: mcservers-parkour
     environment:
       ROLE: parkour
@@ -109,10 +111,10 @@ services:
       MEMORY: ${PARKOUR_HEAP:-1G}
       MAX_PLAYERS: "64"
     volumes:
-      - parkour:/data
-      - plugins:/shared:ro
-      - secrets:/secrets:ro
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/parkour:/data
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -126,7 +128,7 @@ services:
   pvp:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-pvp:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/pvp
+    build: ${SOURCE_ROOT:-./ServerData/source}/pvp
     container_name: mcservers-pvp
     environment:
       ROLE: pvp
@@ -134,11 +136,11 @@ services:
       MEMORY: ${PVP_HEAP:-2G}
       MAX_PLAYERS: "64"
     volumes:
-      - pvp:/data
-      - duels:/duels
-      - plugins:/shared:ro
-      - secrets:/secrets:ro
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/pvp:/data
+      - ${DATA_ROOT:-./ServerData}/duels:/duels
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -152,14 +154,14 @@ services:
   proxy:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-proxy:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/proxy
+    build: ${SOURCE_ROOT:-./ServerData/source}/proxy
     container_name: mcservers-proxy
     environment: {PROXY_MEMORY: "512M"}
     volumes:
-      - proxy:/data
-      - duels:/duels:ro
-      - secrets:/secrets:ro
-      - ${PROJECT_ROOT}/.runtime/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/proxy:/data
+      - ${DATA_ROOT:-./ServerData}/duels:/duels:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       controller: {condition: service_healthy}
       lobby: {condition: service_started}
@@ -173,20 +175,9 @@ services:
     logging: *logging
   pillars-image:
     image: minecraft-pillars:local
-    build: ${SOURCE_ROOT:-./.runtime/source}/pillars
+    build: ${SOURCE_ROOT:-./ServerData/source}/pillars
     profiles: [build]
     entrypoint: ["python3", "-c", "print('Arena image; instances are started by controller')"]
 networks:
   internal:
     name: mcservers_internal
-volumes:
-  plugins: {name: mcservers_plugins}
-  secrets: {name: mcservers_secrets}
-  state: {name: mcservers_state}
-  lobby: {name: mcservers_lobby}
-  survival: {name: mcservers_survival}
-  proxy: {name: mcservers_proxy}
-  backups: {name: mcservers_backups}
-  parkour: {name: mcservers_parkour}
-  pvp: {name: mcservers_pvp}
-  duels: {name: mcservers_duels}
