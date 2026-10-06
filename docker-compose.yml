@@ -15,6 +15,12 @@ services:
       dockerfile: Dockerfile.plugins
     volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
     logging: *logging
+  fabric-mod:
+    image: minecraft-fabric-mod:local
+    build:
+      context: ${SOURCE_ROOT:-./ServerData/source}/infra/fabric
+    volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
+    logging: *logging
   controller:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-controller:local
@@ -33,6 +39,8 @@ services:
       MAINTENANCE_ENABLED: ${MAINTENANCE_ENABLED:-true}
       MC_CGROUP_PARENT: ${MC_CGROUP_PARENT:-}
       BACKUP_KEEP: "2"
+      SURVIVAL_DATA_SUBDIR: survival-fabric-1.20.1
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets
@@ -86,24 +94,29 @@ services:
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: survival
-      VERSION: "26.3"
+      VERSION: "1.20.1"
       CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
       MEMORY: ${SURVIVAL_HEAP:-6G}
+      VOICE_PORT: "24454"
+      VOICE_PUBLIC_HOST: ${VOICE_PUBLIC_HOST:-}
+      JAVA_PROCESSORS: "3"
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
-      - ${DATA_ROOT:-./ServerData}/survival:/data
-      - ${DATA_ROOT:-./ServerData}/duels:/duels
+      - ${DATA_ROOT:-./ServerData}/survival-fabric-1.20.1:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
       - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
+      fabric-mod: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
     mem_limit: ${SURVIVAL_LIMIT:-8g}
     cpus: 3
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
+    ports: ["${BIND_ADDRESS:-127.0.0.1}:24454:24454/udp"]
     networks: [internal]
     logging: *logging
   parkour:
@@ -140,23 +153,28 @@ services:
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: pvp
-      VERSION: "26.3"
+      VERSION: "1.20.1"
       MEMORY: ${PVP_HEAP:-2G}
+      VOICE_PORT: "24455"
+      VOICE_PUBLIC_HOST: ${VOICE_PUBLIC_HOST:-}
+      JAVA_PROCESSORS: "2"
       MAX_PLAYERS: "64"
     volumes:
-      - ${DATA_ROOT:-./ServerData}/pvp:/data
-      - ${DATA_ROOT:-./ServerData}/duels:/duels
+      - ${DATA_ROOT:-./ServerData}/pvp-fabric-1.20.1:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
       - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
+      fabric-mod: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
     mem_limit: ${PVP_LIMIT:-3g}
     cpus: 1.5
     labels: *managed
     restart: unless-stopped
     stop_grace_period: 90s
+    ports: ["${BIND_ADDRESS:-127.0.0.1}:24455:24455/udp"]
     networks: [internal]
     logging: *logging
   proxy:
@@ -167,7 +185,7 @@ services:
     environment: {PROXY_MEMORY: "512M"}
     volumes:
       - ${DATA_ROOT:-./ServerData}/proxy:/data
-      - ${DATA_ROOT:-./ServerData}/duels:/duels:ro
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
