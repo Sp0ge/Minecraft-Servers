@@ -11,24 +11,30 @@ services:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-plugins:local
     build:
-      context: ${SOURCE_ROOT:-./ServersData/source}/infra
+      context: ${SOURCE_ROOT:-./ServerData/source}/infra
       dockerfile: Dockerfile.plugins
-    volumes: ["${DATA_ROOT:-./ServersData}/plugins:/shared"]
+    volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
     logging: *logging
   fabric-mod:
     image: minecraft-fabric-mod:local
     build:
-      context: ${SOURCE_ROOT:-./ServersData/source}/infra/fabric
-    volumes: ["${DATA_ROOT:-./ServersData}/plugins:/shared"]
+      context: ${SOURCE_ROOT:-./ServerData/source}/infra/fabric
+    volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
+    logging: *logging
+  client-checker:
+    image: minecraft-client-checker:local
+    build:
+      context: ${SOURCE_ROOT:-./ServerData/source}/infra/client-checker
+    volumes: ["${DATA_ROOT:-./ServerData}/plugins:/shared"]
     logging: *logging
   controller:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-controller:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/infra
+    build: ${SOURCE_ROOT:-./ServerData/source}/infra
     container_name: mcservers-controller
     stop_grace_period: 900s
     environment:
-      ASSETS_HOST_DIR: ${DATA_ROOT:-./ServersData}/assets
+      ASSETS_HOST_DIR: ${DATA_ROOT:-./ServerData}/assets
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       DATA_HOST_DIR: ${DATA_ROOT:?Run start.sh to resolve the data directory}
       MAX_ARENAS: "5"
@@ -43,10 +49,10 @@ services:
       CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets
-      - ${DATA_ROOT:-./ServersData}/state:/state
-      - ${DATA_ROOT:-./ServersData}/arenas:/arena-data
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets
+      - ${DATA_ROOT:-./ServerData}/state:/state
+      - ${DATA_ROOT:-./ServerData}/arenas:/arena-data
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
     mem_limit: 1g
@@ -63,7 +69,7 @@ services:
   lobby:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-lobby:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/lobby
+    build: ${SOURCE_ROOT:-./ServerData/source}/lobby
     container_name: mcservers-lobby
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
@@ -72,10 +78,10 @@ services:
       MEMORY: ${LOBBY_HEAP:-768M}
       MAX_PLAYERS: "64"
     volumes:
-      - ${DATA_ROOT:-./ServersData}/lobby:/data
-      - ${DATA_ROOT:-./ServersData}/plugins:/shared:ro
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets:ro
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/lobby:/data
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -89,7 +95,7 @@ services:
   survival:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-survival:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/survival
+    build: ${SOURCE_ROOT:-./ServerData/source}/survival
     container_name: mcservers-survival
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
@@ -102,11 +108,11 @@ services:
       JAVA_PROCESSORS: "3"
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
-      - ${DATA_ROOT:-./ServersData}/survival-fabric-1.20.1:/data
-      - ${DATA_ROOT:-./ServersData}/duels-fabric:/duels
-      - ${DATA_ROOT:-./ServersData}/plugins:/shared:ro
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets:ro
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/survival-fabric-1.20.1:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       fabric-mod: {condition: service_completed_successfully}
@@ -122,7 +128,7 @@ services:
   parkour:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-parkour:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/parkour
+    build: ${SOURCE_ROOT:-./ServerData/source}/parkour
     container_name: mcservers-parkour
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
@@ -131,10 +137,10 @@ services:
       MEMORY: ${PARKOUR_HEAP:-1G}
       MAX_PLAYERS: "64"
     volumes:
-      - ${DATA_ROOT:-./ServersData}/parkour:/data
-      - ${DATA_ROOT:-./ServersData}/plugins:/shared:ro
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets:ro
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/parkour:/data
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       controller: {condition: service_healthy}
@@ -148,7 +154,7 @@ services:
   pvp:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-pvp:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/pvp
+    build: ${SOURCE_ROOT:-./ServerData/source}/pvp
     container_name: mcservers-pvp
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
@@ -160,11 +166,11 @@ services:
       JAVA_PROCESSORS: "2"
       MAX_PLAYERS: "64"
     volumes:
-      - ${DATA_ROOT:-./ServersData}/pvp-fabric-1.20.1:/data
-      - ${DATA_ROOT:-./ServersData}/duels-fabric:/duels
-      - ${DATA_ROOT:-./ServersData}/plugins:/shared:ro
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets:ro
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/pvp-fabric-1.20.1:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
+      - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       plugins: {condition: service_completed_successfully}
       fabric-mod: {condition: service_completed_successfully}
@@ -180,14 +186,14 @@ services:
   proxy:
     cgroup_parent: ${MC_CGROUP_PARENT:-}
     image: minecraft-proxy:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/proxy
+    build: ${SOURCE_ROOT:-./ServerData/source}/proxy
     container_name: mcservers-proxy
     environment: {PROXY_MEMORY: "512M"}
     volumes:
-      - ${DATA_ROOT:-./ServersData}/proxy:/data
-      - ${DATA_ROOT:-./ServersData}/duels-fabric:/duels:ro
-      - ${DATA_ROOT:-./ServersData}/secrets:/secrets:ro
-      - ${DATA_ROOT:-./ServersData}/assets:/assets:ro
+      - ${DATA_ROOT:-./ServerData}/proxy:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels:ro
+      - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
+      - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       controller: {condition: service_healthy}
       lobby: {condition: service_started}
@@ -201,7 +207,7 @@ services:
     logging: *logging
   pillars-image:
     image: minecraft-pillars:local
-    build: ${SOURCE_ROOT:-./ServersData/source}/pillars
+    build: ${SOURCE_ROOT:-./ServerData/source}/pillars
     profiles: [build]
     entrypoint: ["python3", "-c", "print('Arena image; instances are started by controller')"]
 networks:
