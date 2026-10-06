@@ -28,7 +28,7 @@ public class Backend extends JavaPlugin implements Listener {
   final Gson json=new Gson(); HttpServer http; ExecutorService httpExecutor; boolean visited=false, accepting=true;
   volatile String snapshot="{}"; final Map<UUID,Request> requests=new HashMap<>();SurvivalRules rules;ParkourRules parkour;DuelRules duels;
   static final String MENU_TITLE="§a§lKiwyClub §8• §0Режимы";
-  ItemStack guidebook;
+  ItemStack guidebook; volatile boolean authReady=false;
   record Request(UUID sender,long expires) {}
   public ChunkGenerator getDefaultWorldGenerator(String name,String id) {
     return new ChunkGenerator() {
@@ -38,7 +38,26 @@ public class Backend extends JavaPlugin implements Listener {
       public Location getFixedSpawnLocation(World world,Random random){return new Location(world,0.5,101,0.5);}
     };
   }
+  @EventHandler(priority=EventPriority.LOWEST) public void admission(AsyncPlayerPreLoginEvent e){
+    if(role.equals("lobby")&&!authReady)e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,"KiwyClub готовится. Повторите вход через несколько секунд.");
+  }
+  void warmAuthMeRegistration(){
+    // AuthMe 6.0.1 lazily resolves this singleton on async registration threads.
+    // Resolve it once before admission to avoid its first-registration race.
+    try {
+      var auth=getServer().getPluginManager().getPlugin("AuthMe");
+      if(auth==null||!auth.isEnabled())throw new IllegalStateException("AuthMe is required in lobby");
+      var field=auth.getClass().getDeclaredField("injector");field.setAccessible(true);Object injector=field.get(auth);
+      var loader=auth.getClass().getClassLoader();
+      Class<?> type=Class.forName("fr.xephi.authme.process.register.executors.PasswordRegisterExecutor",true,loader);
+      Class.forName("ch.jalu.injector.Injector",true,loader).getMethod("getSingleton",Class.class).invoke(injector,type);
+      getLogger().info("AuthMe registration handler prepared before player admission");
+    }catch(Exception e){throw new IllegalStateException("AuthMe registration warmup failed",e);}
+  }
   public void onEnable() {
+    if(role.equals("lobby"))getServer().getScheduler().runTask(this,()->{
+      try{warmAuthMeRegistration();authReady=true;}catch(Exception e){getLogger().log(java.util.logging.Level.SEVERE,"Registration warmup failed",e);getServer().shutdown();}
+    });
     try { token=Files.readString(Path.of("/secrets/api-token")).trim(); } catch(Exception e){throw new RuntimeException(e);}
     getServer().getPluginManager().registerEvents(this,this);
     if(role.equals("survival")){rules=new SurvivalRules(this);getServer().getPluginManager().registerEvents(rules,this);}

@@ -6,7 +6,7 @@ p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argum
 root=Path(a.root).resolve();dest=Path(a.output).resolve()
 if dest.exists():raise SystemExit('Output must not exist')
 for branch in BRANCHES:subprocess.run(['git','rev-parse','--verify',branch],cwd=root,check=True,stdout=subprocess.DEVNULL)
-for folder in [root]+list((root/'.runtime/source').iterdir()):
+for folder in [root]+[root/'.runtime/source'/name for name in ('infra','proxy','lobby','survival','pillars','parkour','pvp')]:
  if subprocess.check_output(['git','status','--porcelain'],cwd=folder).strip():raise SystemExit('Commit source changes first: '+str(folder))
 assets=root/'.runtime/assets';lock=json.loads((root/'.runtime/source/infra/assets.lock.json').read_text())
 files=[name for _,name,_ in lock]+['pillars.zip']

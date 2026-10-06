@@ -8,21 +8,23 @@ def digest(path):
   for block in iter(lambda:stream.read(1024*1024),b''):h.update(block)
  return h.hexdigest()
 def run(*args):return subprocess.check_output(['docker',*args],text=True).strip()
+DATA=None
 def stopped():
+ if DATA and run('ps','-q','--filter','label=mcservers.managed=true'):raise SystemExit('Stop network before transferring ServerData')
  for name in NAMES:
   if run('ps','-q','--filter','volume=mcservers_'+name):raise SystemExit('Stop network before transferring volumes: '+name)
 def helper(name,folder,code,mode='ro'):
  subprocess.run(['docker','run','--rm','--network','none','--memory','512m','--cpus','.25',
-  '--label','mcservers.transfer=true','-v',f'mcservers_{name}:/source:{mode}',
+  '--label','mcservers.transfer=true','-v',(str(DATA/name) if DATA else f'mcservers_{name}')+f':/source:{mode}',
   '-v',str(folder)+':/transfer','minecraft-controller:local','python','-c',code,name],check=True)
-p=argparse.ArgumentParser();p.add_argument('action',choices=['export','import']);p.add_argument('--directory',required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('action',choices=['export','import']);p.add_argument('--directory',required=True);p.add_argument('--data-root',default='./ServerData');p.add_argument('--legacy-volumes',action='store_true');a=p.parse_args();DATA=None if a.legacy_volumes else Path(a.data_root).resolve()
 folder=Path(a.directory).resolve();stopped()
 if a.action=='export':
  if folder.exists():raise SystemExit('Choose a new export directory')
  folder.mkdir(parents=True,mode=0o700);manifest={}
  existing=set(run('volume','ls','--format','{{.Name}}').splitlines())
  for name in NAMES:
-  if 'mcservers_'+name not in existing:
+  if (not (DATA/name).is_dir()) if DATA else ('mcservers_'+name not in existing):
    if name=='backups':continue
    raise SystemExit('Missing source volume: '+name)
   helper(name,folder,"import tarfile,sys,os; p='/transfer/'+sys.argv[1]+'.tar.gz'; t=tarfile.open(p,'w:gz'); t.add('/source',arcname='.'); t.close(); os.chmod(p,0o600)")
@@ -41,7 +43,8 @@ else:
  # Check every destination before importing any archive.
  for filename in manifest:
   name=filename.removesuffix('.tar.gz')
-  run('volume','create','--label','com.docker.compose.project=mcservers','--label','com.docker.compose.volume='+name,'mcservers_'+name)
+  if DATA:(DATA/name).mkdir(parents=True,exist_ok=True)
+  else:run('volume','create','--label','com.docker.compose.project=mcservers','--label','com.docker.compose.volume='+name,'mcservers_'+name)
   helper(name,folder,"from pathlib import Path; assert not any(Path('/source').iterdir()), 'Target volume not empty'")
  for filename in manifest:
   name=filename.removesuffix('.tar.gz')
