@@ -38,7 +38,7 @@ secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 proxies:
   velocity:
     enabled: true
-    online-mode: false
+    online-mode: true
     secret: "'''+secret+'''"
 block-updates:
   disable-noteblock-updates: false
