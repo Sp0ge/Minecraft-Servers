@@ -14,6 +14,8 @@ archive=backups/('survival-'+stamp+'.tar.gz');tmp=archive.with_suffix('.partial'
 with tarfile.open(tmp,'w:gz') as tar:
  for world in worlds:tar.add(world,arcname=world.name)
  if (root/'season.json').exists():tar.add(root/'season.json',arcname='season.json')
+ for name in ['kiwy-settled.json','kiwy-chunky.json','config/chunky/tasks','config/chunky/config.json']:
+  if (root/name).exists():tar.add(root/name,arcname=name)
 with tarfile.open(tmp,'r:gz') as tar:
  for member in tar:
   if member.isfile():
@@ -24,6 +26,8 @@ archive.with_suffix('.sha256').write_text(checksum+'  '+archive.name+'\n')
 # Retain a marker so a failed deletion is never silently presented as success.
 (root/'.wipe-in-progress').write_text(json.dumps({'backup':archive.name,'worlds':[p.name for p in worlds]}))
 for world in worlds:shutil.rmtree(world)
+for name in ['kiwy-settled.json','kiwy-chunky.json']:(root/name).unlink(missing_ok=True)
+if (root/'config/chunky/tasks').is_dir():shutil.rmtree(root/'config/chunky/tasks')
 (root/'.wipe-in-progress').unlink()
 keep=int(os.getenv('BACKUP_KEEP','2'))
 for old in sorted(backups.glob('survival-*.tar.gz'))[:-keep]:old.unlink();old.with_suffix('.sha256').unlink(missing_ok=True)

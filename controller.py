@@ -209,7 +209,7 @@ def maintain(wipe=False):
   if wipe:
    helper=CLIENT.containers.run('minecraft-controller:local',command=['python','/app/maintenance.py'],
     environment={'BACKUP_KEEP':os.getenv('BACKUP_KEEP','2'),'PREVIOUS_SEED':str(status['seed'])},network_disabled=True,
-    mounts=[data_mount('/survival','survival'),data_mount('/backups','backups')],
+    mounts=[data_mount('/survival',os.getenv('SURVIVAL_DATA_SUBDIR','survival')),data_mount('/backups','backups')],
     labels={'mcservers.managed':'true'},cgroup_parent=os.getenv('MC_CGROUP_PARENT') or None,
     mem_limit='512m',nano_cpus=250000000,detach=True)
    try:

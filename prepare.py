@@ -22,3 +22,6 @@ elif source.resolve()!=out.resolve():shutil.copyfile(source,out)
 with zipfile.ZipFile(out) as z:
  if len([n for n in z.namelist() if n.endswith('level.dat')])!=1:raise RuntimeError('Invalid map')
 print('pillars.zip',hashlib.sha256(out.read_bytes()).hexdigest())
+
+import subprocess,sys
+subprocess.run([sys.executable,str(Path(__file__).parent/"modpack/install.py"),"--assets",str(dest),"--client-output",str(dest.parent/"KiwyClub-Survival-1.20.1.mrpack")],check=True)
