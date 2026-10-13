@@ -48,7 +48,7 @@ services:
       MC_CGROUP_PARENT: ${MC_CGROUP_PARENT:-}
       BACKUP_KEEP: "2"
       SURVIVAL_DATA_SUBDIR: survival-fabric-1.20.1
-      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-false}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets
@@ -91,6 +91,12 @@ services:
     cpus: 0.5
     labels: *managed
     restart: unless-stopped
+    healthcheck:
+      test: [CMD, python3, -c, "import json,pathlib,urllib.request; token=pathlib.Path('/secrets/api-token').read_text().strip(); req=urllib.request.Request('http://localhost:8081/status',headers={'Authorization':'Bearer '+token}); state=json.load(urllib.request.urlopen(req,timeout=3)); assert state.get('role')=='lobby' and state.get('auth_ready') is True"]
+      interval: 5s
+      timeout: 5s
+      start_period: 180s
+      retries: 24
     stop_grace_period: 90s
     networks: [internal]
     logging: *logging
@@ -103,7 +109,7 @@ services:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: survival
       VERSION: "1.20.1"
-      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-${MAINTENANCE_ENABLED:-true}}
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-false}
       MEMORY: ${SURVIVAL_HEAP:-6G}
       JAVA_PROCESSORS: "3"
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
@@ -184,7 +190,7 @@ services:
     image: minecraft-proxy:local
     build: ${SOURCE_ROOT:-./ServerData/source}/proxy
     container_name: mcservers-proxy
-    environment: {PROXY_MEMORY: "512M", VOICE_PUBLIC_HOST: "${VOICE_PUBLIC_HOST:-}"}
+    environment: {PROXY_MEMORY: "512M", VOICE_PUBLIC_HOST: "${VOICE_PUBLIC_HOST:-}", VOICE_PUBLIC_PORT: "${VOICE_PUBLIC_PORT:-24454}"}
     volumes:
       - ${DATA_ROOT:-./ServerData}/proxy:/data
       - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels:ro
@@ -192,10 +198,10 @@ services:
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:
       controller: {condition: service_healthy}
-      lobby: {condition: service_started}
+      lobby: {condition: service_healthy}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${MC_PORT:-25565}:25565/tcp"
-      - "${BIND_ADDRESS:-127.0.0.1}:24454:24454/udp"
+      - "${BIND_ADDRESS:-127.0.0.1}:${VOICE_PUBLIC_PORT:-24454}:24454/udp"
     mem_limit: 1g
     cpus: 0.5
     labels: *managed
