@@ -15,8 +15,8 @@ TOKEN=(SECRETS/'api-token').read_text().strip()
 CLIENT=docker.from_env(timeout=10); LOCK=threading.RLock(); VOICE_LOCK=threading.Lock(); WORKER=ThreadPoolExecutor(max_workers=1); MAINTENANCE_WORKER=ThreadPoolExecutor(max_workers=1)
 NETWORK='mcservers_internal'; PREFIX='mcservers-'; MAX=int(os.getenv('MAX_ARENAS','5'))
 ARENAS={f'pillars_{i}':{'state':'STOPPED','generation':None,'players':[], 'reservations':{},'visited':False} for i in range(1,MAX+1)}
-SPARE='pillars_ready'
-ARENAS[SPARE]={'state':'STOPPED','generation':None,'players':[], 'reservations':{},'visited':False}
+LEGACY_SPARE='pillars_ready'
+PUBLIC_ARENAS=tuple(ARENAS)
 DATA_HOST=os.getenv('DATA_HOST_DIR','')
 TZ=ZoneInfo('Europe/Moscow'); shutting_down=False
 
@@ -83,8 +83,8 @@ def occupied_slots():
  planned={name for name,a in ARENAS.items() if a['state'] not in ('STOPPED','FAILED')}
  return len((actual|planned)&set(ARENAS))
 
-def remove_empty(name):
- a=ARENAS[name];existing=CLIENT.containers.get(PREFIX+name)
+def remove_empty(name,arena=None):
+ a=arena if arena is not None else ARENAS[name];existing=CLIENT.containers.get(PREFIX+name)
  if existing.status=='running':api(name+':8081','/admission','closed')
  report=api(name+':8081','/status') if existing.status=='running' else {'generation':a['generation'],'count':0}
  with LOCK:
@@ -103,16 +103,6 @@ def remove_empty(name):
   if folder.is_dir():shutil.rmtree(folder)
  return True
 
-def retire(name):
- if shutting_down:return
- try:
-  if not remove_empty(name):return
-  with LOCK:ARENAS[name].update(state='STOPPED',generation=None,players=[],reservations={},visited=False,error=None);persist()
-  logging.info('Removed empty demand arena %s',name)
- except Exception as e:
-  with LOCK:ARENAS[name].update(state='FAILED',error=str(e));persist()
-  logging.exception('Arena deletion failed for %s',name)
-
 def spawn(name,reset=False):
  if shutting_down:return
  a=ARENAS[name]
@@ -122,10 +112,6 @@ def spawn(name,reset=False):
    if not reset and not resources(): raise RuntimeError('Недостаточно доступного бюджета памяти для новой арены.')
   if reset:
    if not remove_empty(name):return
-   with LOCK:
-    use_spare=name!=SPARE and ARENAS[SPARE]['state']=='WAITING'
-    if use_spare:ARENAS[SPARE]['state']='PROMOTING'
-   if use_spare:promote(name);return
   with LOCK:
    if not resources():raise RuntimeError('Недостаточно памяти после сброса.')
   if not Path('/assets/pillars.zip').exists() and os.getenv('ALLOW_TEST_MAP')!='true':
@@ -153,7 +139,7 @@ def spawn(name,reset=False):
    a.update(state='STARTING',origin=name,generation=generation,players=[],visited=False,reservations={},error=None,started_at=time.time(),ready_at=None);persist()
   logging.info('Created %s generation=%s',name,generation)
  except Exception as e:
-  with LOCK:a.update(state='FAILED',error=str(e));persist()
+  with LOCK:a.update(state='FAILED',error=str(e),failed_at=time.time());persist()
   logging.exception('Arena operation failed for %s',name)
 
 def select(target,player,now=None):
@@ -161,7 +147,7 @@ def select(target,player,now=None):
  with LOCK:
   if shutting_down:return {'status':'failed','message':'Сеть завершает работу.'}
   for a in ARENAS.values():a['reservations']={p:t for p,t in a['reservations'].items() if t>now}
-  choices=[n for n in ARENAS if n!=SPARE] if target=='pillars' else [target] if target in ARENAS and target!=SPARE else []
+  choices=list(PUBLIC_ARENAS) if target=='pillars' else [target] if target in PUBLIC_ARENAS else []
   if not choices:return {'status':'failed','message':'Неизвестная арена.'}
   for n in choices:
    a=ARENAS[n]
@@ -170,9 +156,6 @@ def select(target,player,now=None):
   if any(ARENAS[n]['state'] in ('STARTING','RESETTING','QUEUED') for n in choices):return {'status':'waiting'}
   for n in choices:
    if ARENAS[n]['state']=='STOPPED':
-    if ARENAS[SPARE]['state']=='WAITING':
-     ARENAS[n]['state']='QUEUED';ARENAS[SPARE]['state']='PROMOTING';persist();WORKER.submit(promote,n);return {'status':'waiting'}
-    if ARENAS[SPARE]['state'] in ('QUEUED','STARTING','PROMOTING'):return {'status':'waiting'}
     if occupied_slots()>=MAX:return {'status':'full','message':'Достигнут предел пяти арен.'}
     if not resources():return {'status':'failed','message':'Недостаточно ресурсов для запуска арены.'}
     ARENAS[n]['state']='QUEUED';persist();WORKER.submit(spawn,n);return {'status':'waiting'}
@@ -182,35 +165,37 @@ def select(target,player,now=None):
 def data_mount(target,name,read_only=False):
  return Mount(target,DATA_HOST+'/'+name,type='bind',read_only=read_only) if DATA_HOST else Mount(target,'mcservers_'+name,type='volume',read_only=read_only)
 
-def promote(name):
- # Rename an already running empty JVM. Generation and map remain unchanged.
+def cleanup_legacy_reserve(container):
  try:
-  c=CLIENT.containers.get(PREFIX+SPARE)
-  report=api(SPARE+':8081','/status')
-  if report.get('count',1)!=0 or report.get('visited') or not report.get('accepting'):raise RuntimeError('Reserve is not an empty lobby')
-  c.rename(PREFIX+name)
-  net=CLIENT.networks.get(NETWORK)
-  # Keep the endpoint already bound by the running Minecraft/Voice Chat JVM.
-  address=c.attrs['NetworkSettings']['Networks'][NETWORK]['IPAddress']
-  net.disconnect(c);net.connect(c,aliases=[name],ipv4_address=address)
+  arena={'generation':container.labels.get('mcservers.generation'),
+         'origin':container.labels.get('mcservers.arena'),'reservations':{}}
+  if remove_empty(LEGACY_SPARE,arena):logging.info('Removed obsolete hidden reserve')
+ except Exception:logging.exception('Could not remove obsolete hidden reserve')
+
+def retry_arena(name):
+ try:
+  container=CLIENT.containers.get(PREFIX+name)
+  if container.status!='running':container.start()
   with LOCK:
-   ARENAS[name]=dict(ARENAS[SPARE],state='STARTING',started_at=time.time(),ready_at=None,origin=SPARE)
-   ARENAS[SPARE]={'state':'STOPPED','generation':None,'players':[], 'reservations':{},'visited':False}
-   persist()
-  logging.info('Promoted ready reserve to %s without restarting JVM',name)
+   ARENAS[name].update(state='STARTING',started_at=time.time(),last_seen=None,error=None)
+ except docker.errors.NotFound:spawn(name)
  except Exception as e:
-  with LOCK:
-   ARENAS[name].update(state='FAILED',error=str(e))
-   ARENAS[SPARE].update(state='FAILED',error=str(e));persist()
-  logging.exception('Reserve promotion failed')
+  with LOCK:ARENAS[name].update(state='FAILED',failed_at=time.time(),error=str(e))
+  logging.exception('Could not recover arena %s',name)
 
 def recover():
  for c in CLIENT.containers.list(all=True,filters={'label':'mcservers.arena'}):
   n=c.name.removeprefix(PREFIX)
+  if n==LEGACY_SPARE:
+   WORKER.submit(cleanup_legacy_reserve,c);continue
   if n in ARENAS:
-   ARENAS[n].update(state='STARTING' if c.status=='running' else 'RESETTING',origin=c.labels.get('mcservers.arena'),generation=c.labels.get('mcservers.generation'),started_at=time.time())
-   if c.status!='running':WORKER.submit(spawn,n,True) if n in ('pillars_1',SPARE) else WORKER.submit(retire,n)
- if ARENAS['pillars_1']['state']=='STOPPED':ARENAS['pillars_1']['state']='QUEUED';WORKER.submit(spawn,'pillars_1')
+   ARENAS[n].update(state='STARTING',origin=c.labels.get('mcservers.arena'),generation=c.labels.get('mcservers.generation'),started_at=time.time())
+   if c.status!='running':
+    try:c.start()
+    except Exception as e:
+     ARENAS[n].update(state='FAILED',failed_at=time.time(),error=str(e));logging.exception('Could not start existing arena %s',n)
+ for n in PUBLIC_ARENAS:
+  if ARENAS[n]['state']=='STOPPED':ARENAS[n]['state']='QUEUED';WORKER.submit(spawn,n)
 
 class Handler(BaseHTTPRequestHandler):
  def do_GET(self):
@@ -316,10 +301,8 @@ def schedule(now):
   maintenance_busy=True;MAINTENANCE_WORKER.submit(maintain,date>=maintenance_state['next_wipe'])
 
 def empty_action(name,arena,now):
- if name==SPARE:return None
  if arena["players"] or arena["reservations"]:return None
- if arena["visited"]:return "reset" if name=="pillars_1" else "retire"
- if name!="pillars_1" and now-arena["ready_at"]>30:return "retire"
+ if arena["visited"]:return "reset"
  return None
 
 def loop():
@@ -338,20 +321,23 @@ def loop():
      a['reservations']={p:t for p,t in a['reservations'].items() if t>now and p not in report['players']}
      a['state']='WAITING' if report['accepting'] else 'IN_GAME';a['last_seen']=now
      if not a.get('ready_at'):a['ready_at']=now
-     action=('reset' if n in ('pillars_1',SPARE) else 'retire') if stale and not a['players'] and not a['reservations'] else empty_action(n,a,now)
+     action='reset' if stale and not a['players'] and not a['reservations'] else empty_action(n,a,now)
      if action:
       a['state']='RESETTING';persist()
-      if action=='reset':WORKER.submit(spawn,n,True)
-      else:WORKER.submit(retire,n)
+      WORKER.submit(spawn,n,True)
    except Exception:
     with LOCK:
      a=ARENAS[n]
      if a.get('last_seen') and time.time()-a['last_seen']>15:a['state']='STARTING'
-     if time.time()-a.get('started_at',time.time())>180 and not a.get('last_seen'):
-      a['state']='FAILED';a['error']='Истекло время запуска арены';persist()
+     if time.time()-a.get('started_at',time.time())>600 and not a.get('last_seen'):
+      a['state']='FAILED';a['failed_at']=time.time();a['error']='Истекло время запуска арены';persist()
   with LOCK:
-   if ARENAS[SPARE]['state']=='STOPPED' and occupied_slots()<MAX and resources():
-    ARENAS[SPARE]['state']='QUEUED';WORKER.submit(spawn,SPARE)
+   for name in PUBLIC_ARENAS:
+    arena=ARENAS[name]
+    if arena['state']=='STOPPED' and occupied_slots()<MAX and resources():
+     arena['state']='QUEUED';WORKER.submit(spawn,name)
+    elif arena['state']=='FAILED' and time.time()-arena.get('failed_at',0)>30:
+     arena['state']='QUEUED';WORKER.submit(retry_arena,name)
   schedule(dt.datetime.now(TZ));time.sleep(2)
 
 def terminate(signum,frame):

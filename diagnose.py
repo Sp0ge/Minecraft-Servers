@@ -42,6 +42,12 @@ print(json.dumps({key:props.get(key,'') for key in ('port','bind_address','voice
    result=docker('exec','mcservers-proxy','python3','-c',probe,host,str(port)).strip()
    print(name+': UDP '+str(port)+' '+result+(' | advertised '+props['voice_host'] if name=='mcservers-proxy' else ''))
    if result!='OK':failed=True
+   if name=='mcservers-proxy':
+    bindings=info['NetworkSettings']['Ports'].get(str(port)+'/udp') or []
+    print('  Published UDP: '+(', '.join(b['HostIp']+':'+b['HostPort'] for b in bindings) or 'NOT PUBLISHED'))
+    if not bindings:failed=True
+    elif all(b['HostIp'] in ('127.0.0.1','::1') for b in bindings):
+     print('  LAN/Internet unavailable: set BIND_ADDRESS=0.0.0.0 in settings.env and run start.sh')
    if name!='mcservers-proxy':
     query="""import json,pathlib,urllib.request,sys
 token=pathlib.Path('/secrets/api-token').read_text().strip()

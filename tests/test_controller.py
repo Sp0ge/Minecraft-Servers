@@ -45,11 +45,11 @@ class ControllerTests(unittest.TestCase):
   arena={'players':[],'reservations':{},'visited':False,'ready_at':1}
   self.assertIsNone(self.c.empty_action('pillars_1',arena,1000))
   arena['visited']=True;self.assertEqual(self.c.empty_action('pillars_1',arena,1000),'reset')
- def test_demand_arena_retires_after_last_exit_or_unused_grace(self):
+ def test_pool_arena_stays_ready_until_last_exit_then_resets(self):
   arena={'players':[],'reservations':{},'visited':False,'ready_at':100}
   self.assertIsNone(self.c.empty_action('pillars_2',arena,120))
-  self.assertEqual(self.c.empty_action('pillars_2',arena,131),'retire')
-  arena['visited']=True;self.assertEqual(self.c.empty_action('pillars_2',arena,101),'retire')
+  self.assertIsNone(self.c.empty_action('pillars_2',arena,131))
+  arena['visited']=True;self.assertEqual(self.c.empty_action('pillars_2',arena,101),'reset')
  def test_inflight_reservation_prevents_empty_reset(self):
   arena={'players':[],'reservations':{'player':200},'visited':True,'ready_at':1}
   for name in ('pillars_1','pillars_2'):self.assertIsNone(self.c.empty_action(name,arena,100))
