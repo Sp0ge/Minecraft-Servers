@@ -23,7 +23,7 @@ python3 - "$ROOT/network-sources.tar.gz" "$SOURCE_ROOT" <<'PY'
 import sys,tarfile,hashlib
 from pathlib import Path
 archive=Path(sys.argv[1]);target=Path(sys.argv[2])
-expected='6ef2bca810870d6045639201deb46e0cf31c9aef74f987ac7b6510cfb8b38c71'
+expected='825ab9060388c8ac40b001ceb1aca836d60f0e053b8680caee156e8c99a65596'
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:raise SystemExit('Повреждён архив исходников KiwyClub')
 with tarfile.open(archive) as t:
  for member in t.getmembers():
@@ -61,6 +61,27 @@ if [[ ! -f $ENV_FILE ]]; then
  chmod 600 "$ENV_FILE"
 fi
 # Avoid interrupting connected players during a component upgrade.
+python3 - "$ENV_FILE" "$SOURCE_ROOT/proxy" "$PROFILE" <<'PYVOICE'
+import os,sys,re
+from pathlib import Path
+sys.path.insert(0,sys.argv[2])
+from voice_config import public_host
+p=Path(sys.argv[1]);text=p.read_text()
+settings=dict(line.split('=',1) for line in text.splitlines() if '=' in line and not line.lstrip().startswith('#'))
+updates={key:os.environ[key] for key in ('VOICE_PUBLIC_HOST','VOICE_PUBLIC_PORT') if key in os.environ}
+if sys.argv[3]=='ubuntu' and 'VOICE_PUBLIC_PORT' not in updates and settings.get('VOICE_PUBLIC_PORT','24454')=='24454':
+ updates['VOICE_PUBLIC_PORT']='24460'
+ host=updates.get('VOICE_PUBLIC_HOST',settings.get('VOICE_PUBLIC_HOST',''))
+ if host=='24454':updates['VOICE_PUBLIC_HOST']='24460'
+ elif host.endswith(':24454'):updates['VOICE_PUBLIC_HOST']=host[:-5]+'24460'
+if updates:
+ public_host(updates.get('VOICE_PUBLIC_HOST',settings.get('VOICE_PUBLIC_HOST','')),updates.get('VOICE_PUBLIC_PORT',settings.get('VOICE_PUBLIC_PORT','24454')))
+ for key,value in updates.items():
+  pattern=r'(?m)^'+key+r'=.*$'
+  if re.search(pattern,text):text=re.sub(pattern,lambda match:key+'='+value,text)
+  else:text+='\n'+key+'='+value+'\n'
+ p.write_text(text)
+PYVOICE
 if [[ $("${DOCKER[@]}" inspect -f '{{.State.Running}}' mcservers-proxy 2>/dev/null || true) == true ]]; then
  "${DOCKER[@]}" exec mcservers-proxy python3 -c 'import pathlib,urllib.request,json; token=pathlib.Path("/secrets/api-token").read_text().strip(); req=urllib.request.Request("http://localhost:8080/status",headers={"Authorization":"Bearer "+token}); report=json.load(urllib.request.urlopen(req,timeout=10)); assert report["players"]==0, "Players connected; leave the network before upgrading"'
 fi
