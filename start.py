@@ -6,11 +6,8 @@ for plugin in ('ViaVersion','ViaBackwards'):
  shutil.copy('/assets/'+plugin+'.jar',p/'plugins'/ (plugin+'.jar'))
 shutil.copy('/assets/VoiceChatVelocity.jar',p/'plugins/VoiceChatVelocity.jar')
 voice=p/'plugins/voicechat';voice.mkdir(exist_ok=True)
-voice_host=os.getenv('VOICE_PUBLIC_HOST','').strip()
-if '\n' in voice_host or '\r' in voice_host:raise ValueError('Invalid VOICE_PUBLIC_HOST')
-if not voice_host:voice_host='24454'
-elif voice_host.count(':')>1 and not voice_host.startswith('['):voice_host='['+voice_host+']:24454'
-elif ':' not in voice_host:voice_host+=':24454'
+from voice_config import public_host
+voice_host=public_host(os.getenv('VOICE_PUBLIC_HOST',''),os.getenv('VOICE_PUBLIC_PORT','24454'))
 (voice/'voicechat-proxy.properties').write_text('port=24454\nbind_address=0.0.0.0\nvoice_host='+voice_host+'\nallow_pings=true\n')
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
 block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 763\n  parkour: 777\n  pvp: 763\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
@@ -22,6 +19,8 @@ if 'velocity-ping-save:' not in text:text+='velocity-ping-save: false\n'
 via.write_text(text)
 secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (p/'forwarding.secret').write_text(secret)
+# Docker endpoints change on replacement; do not retain negative/stale DNS for 30s.
+(p/'kiwy-dns.security').write_text('networkaddress.cache.ttl=1\nnetworkaddress.cache.negative.ttl=1\n')
 (p/'velocity.toml').write_text('''config-version = "2.7"
 bind = "0.0.0.0:25565"
 motd = "<gradient:#73DB9A:#EDD58A><bold>KiwyClub</bold></gradient> <dark_gray>•</dark_gray> <white>Твой клуб приключений</white>\\n<green>Survival</green> <gray>•</gray> <gold>Pillars</gold> <gray>•</gray> <aqua>Parkour</aqua> <gray>•</gray> <red>PvP</red>"
@@ -54,4 +53,4 @@ failover-on-unexpected-server-disconnect = true
 [query]
 enabled = false
 ''')
-os.execvp('java',['java','-Xms128M','-Xmx'+os.getenv('PROXY_MEMORY','512M'),'-jar','/assets/velocity.jar'])
+os.execvp('java',['java','-Djava.security.properties=/data/kiwy-dns.security','-Xms128M','-Xmx'+os.getenv('PROXY_MEMORY','512M'),'-jar','/assets/velocity.jar'])

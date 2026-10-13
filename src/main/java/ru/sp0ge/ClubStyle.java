@@ -8,7 +8,7 @@ import java.util.*;
 
 final class ClubStyle {
  static final TextColor GREEN=TextColor.color(0x73DB9A),GOLD=TextColor.color(0xEDD58A),MUTED=TextColor.color(0x94A69B),LINE=TextColor.color(0x365344);
- static final List<String> TOPICS=List.of("all","account","survival","pillars","parkour","pvp");
+ static final List<String> TOPICS=List.of("all","account","survival","pillars","parkour","pvp","voice");
  static final Component BRAND=brand();
  static Component brand(){
   String name="KiwyClub";int[] colors={0x6BDA90,0x7EDF90,0x91E390,0xA4E890,0xB7EC90,0xCAEF92,0xDBEF98,0xEDEF9E};Component result=Component.empty();
@@ -42,6 +42,15 @@ final class ClubStyle {
    section(p,"Вход и аккаунт · в лобби");text(p,"Вход с лицензионным Java-аккаунтом. Скин берётся из Minecraft-профиля.");command(p,"/register <пароль> <повтор>","создать аккаунт");command(p,"/login <пароль>","войти");
    command(p,"/changepassword <старый> <новый>","сменить пароль");command(p,"/logout","выйти из аккаунта");
    text(p,"После входа выбери режим через /server или компас.");
+  }
+  if(topic.equals("voice")||topic.equals("all")){
+   section(p,"Голосовой чат · все режимы");
+   text(p,"Установи Simple Voice Chat из клиентской сборки KiwyClub.");
+   text(p,"V — меню и выбор микрофона. При смене режима голос подключается заново.");
+   text(p,"Нет меню V — проверь мод и назначение клавиши в настройках.");
+   text(p,"Значок отключения — сервер не получил голосовое UDP-соединение.");
+   command(p,"/voicechat","открыть возможности голосового чата");
+   p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));
   }
   if(topic.equals("survival")||topic.equals("all")){
    p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));

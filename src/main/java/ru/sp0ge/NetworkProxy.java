@@ -133,6 +133,34 @@ public class NetworkProxy {
   }
   void help(Player p){ClubStyle.help(p,"main");}
   String current(Player p){return p.getCurrentServer().map(s->s.getServerInfo().getName()).orElse("lobby");}
+  RegisteredServer voiceReady(String name)throws Exception{
+    long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);
+    Exception failure=null;
+    do{
+      JsonObject route;
+      try{
+        var request=HttpRequest.newBuilder(URI.create("http://controller:8080/voice-route?server="+name))
+          .timeout(Duration.ofSeconds(2)).header("Authorization","Bearer "+token).build();
+        var response=client.send(request,HttpResponse.BodyHandlers.ofString());
+        if(response.statusCode()!=200)throw new IllegalStateException("Voice controller returned "+response.statusCode());
+        route=JsonParser.parseString(response.body()).getAsJsonObject();
+      }catch(Exception e){failure=e;Thread.sleep(250);continue;}
+      if(route.has("ready")&&route.get("ready").getAsBoolean()){
+        String address=route.get("address").getAsString();
+        if(!address.matches("[0-9]{1,3}(\\.[0-9]{1,3}){3}"))throw new IllegalStateException("Invalid backend address");
+        var info=new ServerInfo(name,new InetSocketAddress(address,25565));
+        synchronized(this){
+          var old=proxy.getServer(name).orElse(null);
+          if(old!=null&&old.getServerInfo().getAddress().equals(info.getAddress()))return old;
+          if(old!=null&&!old.getPlayersConnected().isEmpty())throw new IllegalStateException("Backend endpoint changed with active connections");
+          if(old!=null)proxy.unregisterServer(old.getServerInfo());
+          return proxy.registerServer(info);
+        }
+      }
+      Thread.sleep(500);
+    }while(System.nanoTime()<deadline);
+    throw new IllegalStateException("Voice Chat backend is not ready: "+name,failure);
+  }
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
@@ -171,6 +199,7 @@ public class NetworkProxy {
   }
   void route(Player p,String target){
     if(!Set.of("lobby","survival","parkour","pillars","pillars_1","pillars_2","pillars_3","pillars_4","pillars_5").contains(target)){message(p,"Неизвестный сервер.");return;}
+    if(current(p).equals(target)){message(p,"Ты уже на этом сервере.");return;}
     if(current(p).equals("pvp")){CompletableFuture.runAsync(()->{try{post("pvp:8081","/duel/end?uuid="+p.getUniqueId(),new JsonObject());}catch(Exception e){message(p,"Не удалось закончить дуэль; повторите /pvpleave.");}});return;}
     if(!routing.add(p.getUniqueId())){message(p,"Подключение уже выполняется.");return;}
     CompletableFuture.runAsync(()->{
@@ -199,7 +228,10 @@ public class NetworkProxy {
   @Subscribe public EventTask before(ServerPreConnectEvent event){
     Player p=event.getPlayer();String name=event.getOriginalServer().getServerInfo().getName();
     if(current(p).equals("pvp")&&!returning.contains(p.getUniqueId())){event.setResult(ServerPreConnectEvent.ServerResult.denied());return null;}
-    if(name.equals("lobby"))return null;
+    if(name.equals("lobby"))return EventTask.async(()->{
+      try{event.setResult(ServerPreConnectEvent.ServerResult.allowed(voiceReady(name)));}
+      catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Лобби и голосовой чат готовятся. Подключитесь снова через несколько секунд.");log.warn("Lobby voice route unavailable: {}",e.toString());}
+    });
     if(Set.of("survival","pvp").contains(name)&&(p.getProtocolVersion().getProtocol()!=763||modpack==null||!modpack.verified(p))){event.setResult(ServerPreConnectEvent.ServerResult.denied());ModpackGate.download(p,"Для Survival и PvP нужна проверенная сборка KiwyClub Fabric 1.20.1.");return null;}
     return EventTask.async(()->{
       if(!auth(p)||drained.contains(name)){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Вход закрыт: нужна авторизация или сервер на обслуживании.");return;}
@@ -213,6 +245,9 @@ public class NetworkProxy {
         var r=call("controller:8080","/select?target="+name+"&uuid="+p.getUniqueId());
         if(!r.get("status").getAsString().equals("ready")){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Арена пока недоступна.");}
       }catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
+      if(event.getResult().isAllowed())try{
+        event.setResult(ServerPreConnectEvent.ServerResult.allowed(voiceReady(name)));
+      }catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Голосовой чат этого сервера готовится. Повторите переход через несколько секунд.");log.warn("Voice route unavailable for {}: {}",name,e.toString());}
     });
   }
   @Subscribe public void command(CommandExecuteEvent event){
