@@ -66,6 +66,7 @@ world-settings:
 ''')
 bukkit='settings:\n  allow-end: '+('true' if role=='survival' else 'false')+'\n'
 if role in ('lobby','parkour','pvp'):bukkit+='worlds:\n  world:\n    generator: NetworkBackend\n'
+if role in ('lobby','parkour','pillars'):bukkit+='ticks-per:\n  autosave: 0\n'
 (root/'bukkit.yml').write_text(bukkit)
 (root/'server.properties').write_text('''server-port=25565
 online-mode=false
