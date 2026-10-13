@@ -42,6 +42,17 @@ print(json.dumps({key:props.get(key,'') for key in ('port','bind_address','voice
    result=docker('exec','mcservers-proxy','python3','-c',probe,host,str(port)).strip()
    print(name+': UDP '+str(port)+' '+result+(' | advertised '+props['voice_host'] if name=='mcservers-proxy' else ''))
    if result!='OK':failed=True
+   if name!='mcservers-proxy':
+    query="""import json,pathlib,urllib.request,sys
+token=pathlib.Path('/secrets/api-token').read_text().strip()
+req=urllib.request.Request('http://controller:8080/voice-route?server='+sys.argv[1],headers={'Authorization':'Bearer '+token})
+data=json.load(urllib.request.urlopen(req,timeout=15))
+print(json.dumps({key:data.get(key) for key in ('ready','address','port')}))
+"""
+    route=json.loads(docker('exec','mcservers-proxy','python3','-c',query,name.removeprefix('mcservers-')))
+    matched=route.get('ready') is True and route.get('address')==host and route.get('port')==port
+    print('  Controller route: '+('OK' if matched else 'NOT READY / MISMATCH'))
+    if not matched:failed=True
   except (RuntimeError,ValueError,KeyError) as error:
    print(name+': CHECK FAILED: '+str(error));failed=True
  print('Проверено: процессы и UDP Voice Chat. Микрофон и соединение клиента требуют проверки в игре.')

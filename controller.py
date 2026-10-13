@@ -1,4 +1,4 @@
-import datetime as dt, json, os, secrets, threading, time, urllib.request, urllib.parse, uuid, logging
+import datetime as dt, json, os, secrets, threading, time, urllib.request, urllib.parse, uuid, logging, socket, struct
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from concurrent.futures import ThreadPoolExecutor
@@ -12,7 +12,7 @@ for name in ('api-token','forwarding.secret'):
  p=SECRETS/name
  if not p.exists(): p.write_text(secrets.token_hex(32));p.chmod(0o600)
 TOKEN=(SECRETS/'api-token').read_text().strip()
-CLIENT=docker.from_env(); LOCK=threading.RLock(); WORKER=ThreadPoolExecutor(max_workers=1); MAINTENANCE_WORKER=ThreadPoolExecutor(max_workers=1)
+CLIENT=docker.from_env(timeout=10); LOCK=threading.RLock(); VOICE_LOCK=threading.Lock(); WORKER=ThreadPoolExecutor(max_workers=1); MAINTENANCE_WORKER=ThreadPoolExecutor(max_workers=1)
 NETWORK='mcservers_internal'; PREFIX='mcservers-'; MAX=int(os.getenv('MAX_ARENAS','5'))
 ARENAS={f'pillars_{i}':{'state':'STOPPED','generation':None,'players':[], 'reservations':{},'visited':False} for i in range(1,MAX+1)}
 SPARE='pillars_ready'
@@ -27,7 +27,7 @@ def voice_port(instance):
  if container.name not in {PREFIX+n for n in ('lobby','survival','pvp','parkour')} and not container.labels.get('mcservers.arena'):raise ValueError('Not a game server')
  first=int(os.getenv('VOICE_PORT_MIN','24460'));last=int(os.getenv('VOICE_PORT_MAX','24559'))
  if not 1024<=first<=last<=65535 or first<=24454<=last:raise ValueError('Invalid voice port range')
- with LOCK:
+ with VOICE_LOCK:
   path=STATE/'voice-ports.json';leases=json.loads(path.read_text()) if path.exists() else {}
   live={c.id for c in CLIENT.containers.list(all=True,filters={'label':'mcservers.managed=true'})}
   leases={key:port for key,port in leases.items() if key in live and first<=port<=last}
@@ -43,6 +43,26 @@ def api(host,path,body=None):
    headers={'Authorization':'Bearer '+TOKEN})
  with urllib.request.urlopen(req,timeout=8) as r:
   b=r.read();return json.loads(b) if b else {}
+
+def voice_route(name):
+ if name not in {'lobby','survival','parkour','pvp'}|set(ARENAS):raise ValueError('Unknown game server')
+ container=CLIENT.containers.get(PREFIX+name)
+ if container.labels.get('mcservers.managed')!='true' or container.status!='running':raise ValueError('Server is not running')
+ address=container.attrs['NetworkSettings']['Networks'][NETWORK]['IPAddress']
+ with VOICE_LOCK:
+  path=STATE/'voice-ports.json';leases=json.loads(path.read_text()) if path.exists() else {}
+  port=leases.get(container.id)
+ if not port:return {'ready':False,'server':name}
+ nonce=uuid.uuid4().bytes;stamp=struct.pack('>q',int(time.time()*1000))
+ packet=b'\xff'+uuid.UUID('58bc9ae9-c7a8-45e4-a11c-efbb67199425').bytes+b'\x18'+nonce+stamp
+ with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as udp:
+  udp.settimeout(1)
+  try:
+   udp.sendto(packet,(address,port));response,peer=udp.recvfrom(2048)
+   ready=response==nonce+stamp and peer==(address,port)
+  except OSError:ready=False
+ return {'ready':ready,'server':name,'address':address,'port':port,'container':container.id,
+         'generation':container.labels.get('mcservers.generation','static')}
 
 def persist():
  p=STATE/'arenas.json'; temp=p.with_suffix('.tmp');temp.write_text(json.dumps(ARENAS));temp.replace(p)
@@ -170,8 +190,9 @@ def promote(name):
   if report.get('count',1)!=0 or report.get('visited') or not report.get('accepting'):raise RuntimeError('Reserve is not an empty lobby')
   c.rename(PREFIX+name)
   net=CLIENT.networks.get(NETWORK)
-  # Keep the original alias until existing connections have drained; add stable requested alias.
-  net.disconnect(c);net.connect(c,aliases=[name])
+  # Keep the endpoint already bound by the running Minecraft/Voice Chat JVM.
+  address=c.attrs['NetworkSettings']['Networks'][NETWORK]['IPAddress']
+  net.disconnect(c);net.connect(c,aliases=[name],ipv4_address=address)
   with LOCK:
    ARENAS[name]=dict(ARENAS[SPARE],state='STARTING',started_at=time.time(),ready_at=None,origin=SPARE)
    ARENAS[SPARE]={'state':'STOPPED','generation':None,'players':[], 'reservations':{},'visited':False}
@@ -199,16 +220,27 @@ class Handler(BaseHTTPRequestHandler):
   if u.path=='/status':
    with LOCK:self.reply(200,{'arenas':ARENAS,'test_map':os.getenv('ALLOW_TEST_MAP')=='true','maintenance':maintenance_state})
   elif u.path=='/voice-port':
-   try:self.reply(200,{'port':voice_port(urllib.parse.parse_qs(u.query)['instance'][0])})
-   except (KeyError,ValueError,docker.errors.NotFound):self.reply(400,{'error':'Invalid voice instance'})
-   except Exception as e:logging.exception('Voice port allocation failed');self.reply(503,{'error':'Voice port unavailable'})
+   try:code,data=200,{'port':voice_port(urllib.parse.parse_qs(u.query)['instance'][0])}
+   except (KeyError,ValueError,docker.errors.NotFound):code,data=400,{'error':'Invalid voice instance'}
+   except Exception:logging.exception('Voice port allocation failed');code,data=503,{'error':'Voice port unavailable'}
+   self.reply(code,data)
+  elif u.path=='/voice-route':
+   try:code,data=200,voice_route(urllib.parse.parse_qs(u.query)['server'][0])
+   except (KeyError,ValueError,docker.errors.NotFound):code,data=200,{'ready':False}
+   except Exception:logging.exception('Voice route lookup failed');code,data=503,{'ready':False}
+   self.reply(code,data)
   elif u.path=='/select':
    try:
     q=urllib.parse.parse_qs(u.query);player=str(uuid.UUID(q['uuid'][0]));self.reply(200,select(q['target'][0],player))
    except (KeyError,ValueError):self.reply(400,{})
   else:self.reply(404,{})
  def reply(self,code,data):
-  b=json.dumps(data).encode();self.send_response(code);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b)
+  b=json.dumps(data).encode()
+  try:
+   self.send_response(code);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(b)));self.end_headers();self.wfile.write(b)
+  except (BrokenPipeError,ConnectionResetError):
+   # A disconnected caller is not an allocation failure; never send a second response.
+   self.close_connection=True
  def log_message(self,*args):pass
 
 maintenance_state={}; maintenance_busy=False
@@ -229,11 +261,20 @@ def save_schedule():
 
 def maintain(wipe=False):
  global maintenance_busy
+ c=None;restart_policy=None
  try:
   api('proxy:8080','/drain?survival','')
   status=api('survival:8081','/status')
   if status.get('count',1)!=0:raise RuntimeError('Survival still has players; operation cancelled')
-  c=CLIENT.containers.get('mcservers-survival');c.stop(timeout=90)
+  c=CLIENT.containers.get('mcservers-survival')
+  restart_policy=c.attrs['HostConfig']['RestartPolicy']
+  c.update(restart_policy={'Name':'no'})
+  from rcon import command
+  # Let Minecraft close LuckPerms/H2 before JVM shutdown hooks are invoked.
+  command('survival','stop')
+  c.wait(timeout=300)
+  c.reload()
+  if c.status=='running':raise RuntimeError('Survival did not stop cleanly; maintenance cancelled')
   if wipe:
    helper=CLIENT.containers.run('minecraft-controller:local',command=['python','/app/maintenance.py'],
     environment={'BACKUP_KEEP':os.getenv('BACKUP_KEEP','2'),'PREVIOUS_SEED':str(status['seed'])},network_disabled=True,
@@ -256,7 +297,11 @@ def maintain(wipe=False):
   maintenance_state['last_restart']=dt.datetime.now(TZ).date().isoformat();maintenance_state.pop('error',None);save_schedule()
  except Exception as e:
   maintenance_state['error']=str(e);save_schedule();logging.exception('Maintenance failed')
- finally:maintenance_busy=False
+ finally:
+  if c is not None and restart_policy is not None:
+   try:c.update(restart_policy=restart_policy)
+   except Exception:logging.exception('Could not restore Survival restart policy')
+  maintenance_busy=False
 
 def schedule(now):
  global maintenance_busy
@@ -285,14 +330,14 @@ def loop():
    try:
     report=api(n+':8081','/status')
     if report.get('generation')!=generation:continue
+    container=CLIENT.containers.get(PREFIX+n)
+    stale=container.labels.get('mcservers.revision')!=os.getenv('NETWORK_REVISION','initial')
     with LOCK:
      a=ARENAS[n];now=time.time()
      a['players']=report['players'];a['visited']=report['visited']
      a['reservations']={p:t for p,t in a['reservations'].items() if t>now and p not in report['players']}
      a['state']='WAITING' if report['accepting'] else 'IN_GAME';a['last_seen']=now
      if not a.get('ready_at'):a['ready_at']=now
-     container=CLIENT.containers.get(PREFIX+n)
-     stale=container.labels.get('mcservers.revision')!=os.getenv('NETWORK_REVISION','initial')
      action=('reset' if n in ('pillars_1',SPARE) else 'retire') if stale and not a['players'] and not a['reservations'] else empty_action(n,a,now)
      if action:
       a['state']='RESETTING';persist()

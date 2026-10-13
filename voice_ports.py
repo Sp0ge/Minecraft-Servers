@@ -9,7 +9,7 @@ def allocate():
  for attempt in range(30):
   try:
    request=urllib.request.Request(url,headers={'Authorization':'Bearer '+token})
-   with urllib.request.urlopen(request,timeout=5) as response:port=int(json.load(response)['port'])
+   with urllib.request.urlopen(request,timeout=20) as response:port=int(json.load(response)['port'])
    if not 1024<=port<=65535:raise ValueError('Invalid allocated voice port')
    print('Voice Chat internal UDP port:',port,flush=True)
    return port

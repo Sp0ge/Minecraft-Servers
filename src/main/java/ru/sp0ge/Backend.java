@@ -55,6 +55,11 @@ public class Backend extends JavaPlugin implements Listener {
     }catch(Exception e){throw new IllegalStateException("AuthMe registration warmup failed",e);}
   }
   public void onEnable() {
+    if(Set.of("lobby","parkour","pillars").contains(role))getServer().getScheduler().runTask(this,()->{
+      // Lobby is imported and parkour/arenas are regenerated; their worlds need no periodic saves.
+      // AuthMe's database and parkour metadata are persisted independently.
+      for(World world:getServer().getWorlds())world.setAutoSave(false);
+    });
     if(role.equals("lobby"))getServer().getScheduler().runTask(this,()->{
       try{warmAuthMeRegistration();authReady=true;}catch(Exception e){getLogger().log(java.util.logging.Level.SEVERE,"Registration warmup failed",e);getServer().shutdown();}
     });
@@ -95,7 +100,7 @@ public class Backend extends JavaPlugin implements Listener {
        Map.entry("tps_1m",Math.min(20,getServer().getTPS()[0])),Map.entry("mspt_mean",getServer().getAverageTickTime()),Map.entry("mspt_p95",p95),
        Map.entry("spawn",List.of(getServer().getWorlds().getFirst().getSpawnLocation().getBlockX(),getServer().getWorlds().getFirst().getSpawnLocation().getBlockY(),getServer().getWorlds().getFirst().getSpawnLocation().getBlockZ())),
        Map.entry("daytime",getServer().getWorlds().getFirst().getTime()),Map.entry("daylight_cycle",getServer().getWorlds().getFirst().getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)),
-       Map.entry("storm",getServer().getWorlds().getFirst().hasStorm())));
+       Map.entry("storm",getServer().getWorlds().getFirst().hasStorm()),Map.entry("auth_ready",authReady)));
       requests.entrySet().removeIf(e->e.getValue().expires()<System.currentTimeMillis());
     },1,10);
     try {

@@ -81,4 +81,35 @@ class ControllerTests(unittest.TestCase):
   self.c.CLIENT.containers.get.return_value.name='mcservers-lobby'
   with patch.dict(os.environ,{'VOICE_PORT_MIN':'24454','VOICE_PORT_MAX':'24460'}):
    with self.assertRaises(ValueError):self.c.voice_port('id')
+ def test_disconnected_http_client_does_not_trigger_second_response(self):
+  handler=object.__new__(self.c.Handler)
+  handler.send_response=Mock();handler.send_header=Mock();handler.end_headers=Mock()
+  handler.wfile=Mock();handler.wfile.write.side_effect=BrokenPipeError()
+  handler.reply(200,{'port':24460})
+  handler.send_response.assert_called_once_with(200)
+  self.assertTrue(handler.close_connection)
+ def test_voice_allocation_does_not_wait_for_arena_state_lock(self):
+  import threading
+  from types import SimpleNamespace
+  server=SimpleNamespace(id='id',name='mcservers-lobby',labels={'mcservers.managed':'true'})
+  self.c.CLIENT.containers.get.return_value=server
+  self.c.CLIENT.containers.list.return_value=[server]
+  entered=threading.Event();release=threading.Event()
+  def hold():
+   with self.c.LOCK:entered.set();release.wait(2)
+  thread=threading.Thread(target=hold);thread.start();entered.wait(1)
+  try:self.assertEqual(self.c.voice_port('id'),24460)
+  finally:release.set();thread.join()
+ def test_daily_restart_uses_graceful_stop_and_restores_restart_policy(self):
+  import rcon
+  container=Mock();policy={'Name':'unless-stopped','MaximumRetryCount':0}
+  container.attrs={'HostConfig':{'RestartPolicy':policy}};container.status='exited'
+  self.c.CLIENT.containers.get.return_value=container
+  self.c.api=Mock(side_effect=[{}, {'count':0,'seed':42}, {'role':'survival'}, {}])
+  self.c.maintenance_state={'next_wipe':'2027-01-01','warnings':[]}
+  with patch.object(rcon,'command') as stop:self.c.maintain(False)
+  stop.assert_called_once_with('survival','stop');container.stop.assert_not_called()
+  container.wait.assert_called_once_with(timeout=300);container.start.assert_called_once()
+  self.assertEqual(container.update.call_args_list[-1].kwargs,{'restart_policy':policy})
+  self.assertNotIn('error',self.c.maintenance_state)
 if __name__=='__main__':unittest.main()
