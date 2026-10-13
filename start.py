@@ -1,5 +1,5 @@
 """Pinned Fabric runtime shared by Survival and PvP. Never opens a newer Paper world."""
-import os,pathlib,json,hashlib,shutil,secrets,datetime
+import os,pathlib,json,hashlib,shutil,secrets,datetime,re
 root=pathlib.Path('/data');root.mkdir(exist_ok=True);os.chdir(root)
 if (root/'.wipe-in-progress').exists():raise RuntimeError('Interrupted wipe; restore manually')
 role=os.getenv('ROLE','survival')
@@ -24,6 +24,20 @@ shutil.copyfile('/shared/kiwy-fabric.jar',mods/'kiwy-fabric.jar');managed.write_
 config=root/'config';config.mkdir(exist_ok=True)
 secret=pathlib.Path('/secrets/forwarding.secret').read_text().strip()
 (config/'FabricProxy-Lite.toml').write_text('hackOnlineMode = true\nhackEarlySend = true\nhackMessageChain = true\nsecret = '+json.dumps(secret)+'\n')
+# Replace only absent-in-this-pack defaults; preserve administrator choices.
+opac=config/'openpartiesandclaims-server.toml'
+if not opac.exists():opac.write_text('[serverConfig]\nprimaryPartySystem = "default"\npermissionSystem = "luck_perms"\n')
+if opac.exists():
+ text=opac.read_text()
+ text=re.sub(r'(?m)^(\s*primaryPartySystem\s*=\s*)"argonauts_guilds"',r'\1"default"',text)
+ text=re.sub(r'(?m)^(\s*permissionSystem\s*=\s*)"prometheus"',r'\1"luck_perms"',text)
+ opac.write_text(text)
+modernfix=config/'modernfix-mixins.properties'
+text=modernfix.read_text() if modernfix.exists() else ''
+key='mixin.perf.remove_biome_temperature_cache'
+text=re.sub(r'(?m)^'+re.escape(key)+r'=.*$',key+'=false',text)
+if not any(line.startswith(key+'=') for line in text.splitlines()):text+='\n'+key+'=false\n'
+modernfix.write_text(text)
 voice=config/'voicechat';voice.mkdir(exist_ok=True)
 import sys
 sys.path.insert(0,'/assets')
