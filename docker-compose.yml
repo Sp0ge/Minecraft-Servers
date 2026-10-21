@@ -47,8 +47,8 @@ services:
       MAINTENANCE_ENABLED: ${MAINTENANCE_ENABLED:-true}
       MC_CGROUP_PARENT: ${MC_CGROUP_PARENT:-}
       BACKUP_KEEP: "2"
-      SURVIVAL_DATA_SUBDIR: survival-fabric-1.20.1
-      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-false}
+      SURVIVAL_DATA_SUBDIR: survival-fabric-26.3
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-true}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets
@@ -108,14 +108,14 @@ services:
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: survival
-      VERSION: "1.20.1"
-      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-false}
+      VERSION: "26.3"
+      CHUNK_PREGEN_ENABLED: ${CHUNK_PREGEN_ENABLED:-true}
       MEMORY: ${SURVIVAL_HEAP:-6G}
       JAVA_PROCESSORS: "3"
       MAX_PLAYERS: ${SURVIVAL_MAX_PLAYERS:-64}
     volumes:
-      - ${DATA_ROOT:-./ServerData}/survival-fabric-1.20.1:/data
-      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
+      - ${DATA_ROOT:-./ServerData}/survival-fabric-26.3:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric-26.3:/duels
       - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
@@ -164,13 +164,13 @@ services:
     environment:
       NETWORK_REVISION: ${NETWORK_REVISION:-initial}
       ROLE: pvp
-      VERSION: "1.20.1"
+      VERSION: "26.3"
       MEMORY: ${PVP_HEAP:-2G}
       JAVA_PROCESSORS: "2"
       MAX_PLAYERS: "64"
     volumes:
-      - ${DATA_ROOT:-./ServerData}/pvp-fabric-1.20.1:/data
-      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels
+      - ${DATA_ROOT:-./ServerData}/pvp-fabric-26.3:/data
+      - ${DATA_ROOT:-./ServerData}/duels-fabric-26.3:/duels
       - ${DATA_ROOT:-./ServerData}/plugins:/shared:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
@@ -190,10 +190,10 @@ services:
     image: minecraft-proxy:local
     build: ${SOURCE_ROOT:-./ServerData/source}/proxy
     container_name: mcservers-proxy
-    environment: {PROXY_MEMORY: "512M", VOICE_PUBLIC_HOST: "${VOICE_PUBLIC_HOST:-}", VOICE_PUBLIC_PORT: "${VOICE_PUBLIC_PORT:-24454}"}
+    environment: {NETWORK_REVISION: "${NETWORK_REVISION:-initial}", PROXY_MEMORY: "512M", VOICE_PUBLIC_HOST: "${VOICE_PUBLIC_HOST:-}", VOICE_PUBLIC_PORT: "${VOICE_PUBLIC_PORT:-24454}"}
     volumes:
       - ${DATA_ROOT:-./ServerData}/proxy:/data
-      - ${DATA_ROOT:-./ServerData}/duels-fabric:/duels:ro
+      - ${DATA_ROOT:-./ServerData}/duels-fabric-26.3:/duels:ro
       - ${DATA_ROOT:-./ServerData}/secrets:/secrets:ro
       - ${DATA_ROOT:-./ServerData}/assets:/assets:ro
     depends_on:

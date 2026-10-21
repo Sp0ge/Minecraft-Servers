@@ -23,7 +23,7 @@ python3 - "$ROOT/network-sources.tar.gz" "$SOURCE_ROOT" <<'PY'
 import sys,tarfile,hashlib
 from pathlib import Path
 archive=Path(sys.argv[1]);target=Path(sys.argv[2])
-expected='8671e1f58e74218536e26b5388b5fa01fc89bce75fbce363e96a3b99720a637d'
+expected='8b472fea816c80d5efdab3f847f54641b5d4d2a945ac58bab88cad378078e1b9'
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:raise SystemExit('Повреждён архив исходников KiwyClub')
 with tarfile.open(archive) as t:
  for member in t.getmembers():
@@ -98,7 +98,7 @@ PYENV
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" --profile build config -q
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" --profile build build
 "${DOCKER[@]}" compose --env-file "$ENV_FILE" run --rm --no-deps client-checker
-python3 "$SOURCE_ROOT/infra/modpack/install.py" --assets "$DATA_ROOT/assets" --client-output "$DATA_ROOT/KiwyClub-Survival-1.20.1.mrpack" --checker "$DATA_ROOT/plugins/kiwy-client-checker.jar"
+python3 "$SOURCE_ROOT/infra/modpack/install.py" --assets "$DATA_ROOT/assets" --client-output "$DATA_ROOT/KiwyClub-Survival-26.3.mrpack" --checker "$DATA_ROOT/plugins/kiwy-client-checker.jar"
 # Release legacy host UDP bindings before the proxy takes over 24454.
 for legacy in survival:24454 pvp:24455; do
  name=${legacy%:*};port=${legacy#*:}
