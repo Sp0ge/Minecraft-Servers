@@ -1,13 +1,12 @@
-plugins { id 'fabric-loom' version '1.10.5' }
+plugins { id 'net.fabricmc.fabric-loom' version '1.17.7' }
 version = '1.0.0'
 group = 'ru.sp0ge'
 base { archivesName = 'kiwy-client-checker' }
 repositories { mavenCentral() }
 dependencies {
- minecraft 'com.mojang:minecraft:1.20.1'
- mappings 'net.fabricmc:yarn:1.20.1+build.10:v2'
- modImplementation 'net.fabricmc:fabric-loader:0.16.14'
- modImplementation 'net.fabricmc.fabric-api:fabric-api:0.92.6+1.20.1'
+ minecraft 'com.mojang:minecraft:26.3'
+ implementation 'net.fabricmc:fabric-loader:0.19.5'
+ implementation 'net.fabricmc.fabric-api:fabric-api:0.164.0+26.3'
 }
-java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-tasks.withType(JavaCompile).configureEach { options.release = 17; options.encoding = 'UTF-8' }
+java { sourceCompatibility = JavaVersion.VERSION_25; targetCompatibility = JavaVersion.VERSION_25 }
+tasks.withType(JavaCompile).configureEach { options.release = 25; options.encoding = 'UTF-8' }

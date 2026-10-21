@@ -1,14 +1,13 @@
 package ru.sp0ge.kiwy.mixin;
-import ru.sp0ge.kiwy.Network;
-import net.minecraft.world.explosion.Explosion;
-import net.minecraft.util.math.BlockPos;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import org.spongepowered.asm.mixin.*;
+import net.minecraft.world.level.ServerExplosion;
+import net.minecraft.core.BlockPos;
+import java.util.List;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.*;
-import org.spongepowered.asm.mixin.injection.callback.*;
-@Mixin(Explosion.class)
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import ru.sp0ge.kiwy.Network;
+@Mixin(ServerExplosion.class)
 public class ExplosionGuard {
- @Shadow @Final private ObjectArrayList<BlockPos> affectedBlocks;
- @Inject(method="collectBlocksAndDamageEntities",at=@At("TAIL"))
- void blocks(CallbackInfo ci){if(Network.INSTANCE!=null&&Network.INSTANCE.arena)affectedBlocks.clear();}
+ @Inject(method="calculateExplodedPositions",at=@At("HEAD"),cancellable=true)
+ private void kiwy$blocks(CallbackInfoReturnable<List<BlockPos>> ci){if(Network.INSTANCE!=null&&Network.INSTANCE.arena)ci.setReturnValue(List.of());}
 }

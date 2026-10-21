@@ -1,64 +1,33 @@
-"""Maintainer-only resolver. Normal startup uses committed version/hash lock files."""
-import json,urllib.request,urllib.parse,pathlib,concurrent.futures,zipfile
-ROOT=pathlib.Path(__file__).parent; MC='1.20.1'
-REQUESTED='terralith tectonic incendium nullscape explorify towns-and-towers dungeons-and-taverns friends-and-foes more-mob-variants better-combat artifacts lootr simple-voice-chat emotecraft styledplayerlist styled-chat luckperms ledger open-parties-and-claims chunky xaeros-minimap xaeros-world-map xaeroplus jade sound-physics-remastered presence-footsteps ambientsounds fallingleaves effective visuality not-enough-animations lithium ferrite-core modernfix krypton alternate-current noisium servercore c2me-fabric vmp-fabric spark yungs-better-dungeons yungs-better-mineshafts yungs-better-strongholds yungs-better-desert-temples yungs-better-jungle-temples yungs-better-ocean-monuments yungs-better-nether-fortresses yungs-better-witch-huts yungs-better-end-island yungs-bridges yungs-extras'.split()
-EXTRA=['lithostitched','fabric-api','fabricproxy-lite','crossstitch']
+import json,pathlib,urllib.request,urllib.parse,hashlib,concurrent.futures,zipfile,io
+root=pathlib.Path(__file__).parent
+MC='26.3'
+requested='appleskin mouse-tweaks shulkerboxtooltip double-doors lithium ferrite-core krypton alternate-current servercore c2me-fabric vmp-fabric spark chunky terralith tectonic nullscape simple-voice-chat sound-physics-remastered luckperms enchantments-unbound controlify'.split()
+extra=['fabric-api','fabricproxy-lite']
 cache={}
 def get(path):
- if path not in cache:
-  req=urllib.request.Request('https://api.modrinth.com/v2/'+path,headers={'User-Agent':'KiwyClub/1.0 (github.com/Sp0ge/Minecraft-Servers)'})
-  cache[path]=json.load(urllib.request.urlopen(req,timeout=120))
+ if path not in cache:cache[path]=json.load(urllib.request.urlopen(urllib.request.Request('https://api.modrinth.com/v2/'+path,headers={'User-Agent':'KiwyClub/2.0'}),timeout=90))
  return cache[path]
-projects={};selected={};explicit=set();queue=[]
-def add(pid,exact=None,requested=False):
- p=get('project/'+pid);pid=p['id'];projects[pid]=p
- if exact and p['slug']=='fabric-api' and pid in selected:return pid
- if exact:
-  v=get('version/'+exact)
-  if pid in explicit and selected[pid]['id']!=v['id']:raise RuntimeError('Conflicting exact dependencies: '+p['slug'])
-  explicit.add(pid)
- elif pid in selected:return pid
- else:
-  candidates=get('project/'+pid+'/version?'+urllib.parse.urlencode({'game_versions':json.dumps([MC]),'loaders':json.dumps(['fabric'])}))
-  if not candidates:raise RuntimeError('No Fabric '+MC+' release: '+p['slug'])
-  # Prefer production releases, while retaining alpha/beta projects without stable builds.
-  v=next((r for r in candidates if r['version_type']=='release'),candidates[0])
- if MC not in v['game_versions'] or 'fabric' not in v['loaders']:raise RuntimeError('Incompatible dependency: '+p['slug']+' '+v['version_number'])
- selected[pid]=v;queue.append(pid);return pid
-for slug in REQUESTED+EXTRA:add(slug)
-seen=set()
+selected={};projects={};sides={};queue=[]
+clientonly={'controlify','sound-physics-remastered','yacl','cloth-config','modmenu','mouse-tweaks','shulkerboxtooltip'}
+def add(slug,exact=None,required_sides=None):
+ p=get('project/'+slug);pid=p['id'];projects[pid]=p
+ if pid in selected:
+  if exact and selected[pid]['id']!=exact:raise RuntimeError('Conflicting exact dependency '+p['slug'])
+  if required_sides:sides[pid]|=required_sides
+  return pid
+ vs=get('project/'+pid+'/version?'+urllib.parse.urlencode({'game_versions':json.dumps([MC]),'loaders':json.dumps(['fabric'])}))
+ v=get('version/'+exact) if exact else next((x for x in vs if x['version_type']=='release'),vs[0] if vs else None)
+ if not v or MC not in v['game_versions'] or 'fabric' not in v['loaders']:raise RuntimeError('Unavailable '+p['slug'])
+ selected[pid]=v;sides[pid]=required_sides or ({'client'} if p['slug'] in clientonly else {'client','server'} if p['slug'] in ('simple-voice-chat','fabric-api','appleskin') else {'server'});queue.append(pid);return pid
+for slug in requested+extra:add(slug)
 while queue:
- pid=queue.pop(0);v=selected[pid]
- if v['id'] in seen:continue
- seen.add(v['id'])
- for d in v['dependencies']:
-  if d['dependency_type']=='required':
-   target=d.get('project_id') or get('version/'+d['version_id'])['project_id'];add(target,d.get('version_id'))
-# Determine installed sides from project declarations; dependency sides inherit parent need.
-envs={pid:{s for s in ['client','server'] if projects[pid][s+'_side']!='unsupported'} for pid in selected}
-for pid,p in projects.items():
- if p['slug'] in EXTRA and p['slug']!='fabric-api':envs[pid]={'server'}
-# Lithostitched declares environment=* in its Fabric JAR; Tectonic needs it on the client too.
-for pid,p in projects.items():
- if p['slug']=='lithostitched':envs[pid]={'client','server'}
-changed=True
-while changed:
- changed=False
- for pid,v in selected.items():
-  for d in v['dependencies']:
-   if d['dependency_type']!='required':continue
-   target=d.get('project_id') or get('version/'+d['version_id'])['project_id']
-   for side in envs[pid]:
-    if projects[target][side+'_side']=='unsupported':raise RuntimeError('Unsupported dependency side: '+projects[target]['slug']+' '+side)
-    if side not in envs[target]:envs[target].add(side);changed=True
+ pid=queue.pop(0)
+ for dep in selected[pid]['dependencies']:
+  if dep['dependency_type']=='required':add(dep.get('project_id') or get('version/'+dep['version_id'])['project_id'],dep.get('version_id'),sides[pid].copy())
 files=[]
-for pid in sorted(selected,key=lambda x:projects[x]['slug']):
- p=projects[pid];v=selected[pid];f=next((f for f in v['files'] if f['primary']),v['files'][0])
- files.append({'slug':p['slug'],'name':p['title'],'project_id':pid,'version_id':v['id'],'version':v['version_number'],'release_type':v['version_type'],'requested':p['slug'] in REQUESTED,'sides':sorted(envs[pid]),'filename':f['filename'],'url':f['url'],'sha512':f['hashes']['sha512'],'sha1':f['hashes']['sha1'],'size':f['size'],'source':'https://modrinth.com/mod/'+p['slug'],'dependencies':v['dependencies']})
-# Modrinth's official Fabric loader metadata is independent of mod resolution.
-req=urllib.request.Request('https://meta.fabricmc.net/v2/versions/loader/'+MC,headers={'User-Agent':'KiwyClub/1.0'})
-loader=next(v['loader']['version'] for v in json.load(urllib.request.urlopen(req)) if v['loader']['stable'])
-lock={'minecraft':MC,'loader':'fabric','fabric_loader':loader,'requested_count':len(REQUESTED),'files':files}
-(ROOT/'mods.lock.json').write_text(json.dumps(lock,ensure_ascii=False,indent=2)+'\n')
-print('Pinned',len(files),'files; requested',len(REQUESTED),'Fabric loader',loader)
-for f in files:print(f['slug'],f['version'],','.join(f['sides']),f['release_type'])
+for pid,v in selected.items():
+ p=projects[pid];f=next((f for f in v['files'] if f['primary']),v['files'][0]);files.append({'slug':p['slug'],'name':p['title'],'project_id':pid,'version_id':v['id'],'version':v['version_number'],'release_type':v['version_type'],'requested':p['slug'] in requested,'sides':sorted(sides[pid]),'filename':f['filename'],'url':f['url'],'sha512':f['hashes']['sha512'],'sha1':f['hashes']['sha1'],'size':f['size'],'source':'https://modrinth.com/mod/'+p['slug'],'dependencies':v['dependencies']})
+files.sort(key=lambda f:f['slug']);lock={'minecraft':MC,'loader':'fabric','fabric_loader':'0.19.5','requested_count':len(requested),'files':files}
+(root/'mods.lock.json').write_text(json.dumps(lock,ensure_ascii=False,indent=2)+'\n')
+
+print("Pinned", len(files), "files for", MC)

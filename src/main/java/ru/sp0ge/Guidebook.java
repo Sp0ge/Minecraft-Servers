@@ -17,7 +17,7 @@ public final class Guidebook {
   meta.displayName(Component.text("Команды и режимы",NamedTextColor.GREEN).decorate(TextDecoration.BOLD).decoration(TextDecoration.ITALIC,false));
   meta.lore(List.of(Component.text("KiwyClub · путеводитель",NamedTextColor.GRAY).decoration(TextDecoration.ITALIC,false),Component.text("Режимы, команды и правила",NamedTextColor.DARK_GREEN).decoration(TextDecoration.ITALIC,false)));
   List<Component> pages=new ArrayList<>();
-  pages.add(page("Игровой клуб","Java-аккаунт","со своей лицензией.","Survival: 1.20.1","Сборка KiwyClub.","Parkour • PvP","До 64 игроков","в одной сети.","","/help"));
+  pages.add(page("Игровой клуб","Java-аккаунт","со своей лицензией.","Survival: 26.3","Сборка KiwyClub.","Parkour • PvP","До 64 игроков","в одной сети.","","/help"));
   Component contents=header("Оглавление");
   String[] names={"Вход и аккаунт","Выбор режима","Survival","Pillars","Parkour","Дуэли PvP","Победы и справка","Моды и приваты"};int[] targets={3,5,6,10,12,14,16,17};
   for(int i=0;i<names.length;i++)contents=contents.append(Component.text("› "+names[i],NamedTextColor.DARK_GREEN).clickEvent(ClickEvent.changePage(targets[i])).hoverEvent(HoverEvent.showText(Component.text("Открыть раздел")))).append(Component.newline());
@@ -36,8 +36,8 @@ public final class Guidebook {
   pages.add(page("PvP · вызов","/pvp имя","Игрок из Survival.","/pvpaccept","Принять вызов.","/pvpdeny","Отклонить вызов.","Вызов: 60 секунд.","Поле 3×3 чанка.","Новая карта в бой."));
   pages.add(page("PvP · возврат","После смерти оба","назад в Survival.","Исходные вещи","вернутся целиком.","Расходники и износ","не теряются.","/pvpleave","Завершить бой.","Бой: до 10 минут."));
   pages.add(page("Победы и справка","Победу видит","вся сеть KiwyClub.","Уход соперника","бой заканчивается.","Вещи сохраняются.","","/help","Справка в чате.","Нажми команду."));
-  pages.add(page("Приваты и партии","/opac","Твои настройки.","/oclaims","Защита чанков.","/oparties","Партии игроков.","Карта Xaero тоже","управляет приватами.","Только в Survival."));
-  pages.add(page("Клиент и общение","Fabric 1.20.1 +","сборка KiwyClub.","Проверка — в лобби.","Скачать сборку","Голос во всех","режимах: клавиша V.","/voicechat","Нужен клиентский","Simple Voice Chat."));
+  pages.add(page("Выживание 26.3","Ванильные предметы","и сражения.","Горы и долины:","Terralith + Tectonic.","/home — к кровати","/tpa — запрос к другу","/help — команды","Чат: 128 блоков."));
+  pages.add(page("Клиент и общение","Fabric 26.3 +","сборка KiwyClub.","Проверка — в лобби.","Скачать сборку","Голос во всех","режимах: клавиша V.","/voicechat","Нужен клиентский","Simple Voice Chat."));
   meta.pages(pages);book.setItemMeta(meta);return book;
  }
  static Component header(String title){return Component.empty().append(Component.text("KiwyClub",NamedTextColor.DARK_GREEN).decorate(TextDecoration.BOLD))

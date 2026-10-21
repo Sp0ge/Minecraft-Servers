@@ -1,17 +1,16 @@
 package ru.sp0ge.kiwy.mixin;
-import ru.sp0ge.kiwy.Network;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.item.ItemStack;
-import net.minecraft.entity.ItemEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.util.Prediction;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.*;
-import org.spongepowered.asm.mixin.injection.callback.*;
-@Mixin(PlayerEntity.class)
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import ru.sp0ge.kiwy.Network;
+@Mixin(ServerPlayer.class)
 public class PlayerGuard {
- @Inject(method="damage",at=@At("HEAD"),cancellable=true)
- void damage(DamageSource source,float amount,CallbackInfoReturnable<Boolean> ci){if((Object)this instanceof ServerPlayerEntity p&&Network.INSTANCE!=null){Network n=Network.INSTANCE;if(n.frozen(p)||n.arena&&source.getAttacker() instanceof ServerPlayerEntity other&&!n.duels.sameMatch(p,other))ci.setReturnValue(false);}}
- @Inject(method="dropItem(Lnet/minecraft/item/ItemStack;ZZ)Lnet/minecraft/entity/ItemEntity;",at=@At("HEAD"),cancellable=true)
- void drop(ItemStack stack,boolean throwRandomly,boolean retainOwnership,CallbackInfoReturnable<ItemEntity> ci){if((Object)this instanceof ServerPlayerEntity p&&Network.INSTANCE!=null&&(Network.INSTANCE.arena||Network.INSTANCE.frozen(p)))ci.setReturnValue(null);}
+ @Inject(method="drop(Lnet/minecraft/world/item/ItemStack;ZLnet/minecraft/util/Prediction;)Lnet/minecraft/world/entity/item/ItemEntity;",at=@At("HEAD"),cancellable=true)
+ private void kiwy$drop(ItemStack stack,boolean random,Prediction prediction,CallbackInfoReturnable<ItemEntity> ci){
+  Network n=Network.INSTANCE;if(n!=null&&(n.arena||n.frozen((ServerPlayer)(Object)this)))ci.setReturnValue(null);
+ }
 }
