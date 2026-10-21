@@ -27,7 +27,7 @@ final class ModpackGate {
  ModpackGate(NetworkProxy owner) throws Exception {
   this.owner = owner;
   var config = JsonParser.parseString(Files.readString(Path.of("/assets/client-requirements.json"))).getAsJsonObject();
-  if (!config.get("minecraft").getAsString().equals("1.20.1")) throw new IllegalStateException("Incompatible modpack manifest");
+  if (!config.get("minecraft").getAsString().equals("26.3")) throw new IllegalStateException("Incompatible modpack manifest");
   for (var entry : config.getAsJsonArray("files")) {
    var file = entry.getAsJsonObject(); String hash = file.get("sha512").getAsString();
    if (!hash.matches("[a-f0-9]{128}")) throw new IllegalStateException("Invalid modpack hash");
@@ -81,7 +81,7 @@ final class ModpackGate {
    var missing = required.entrySet().stream().filter(e -> !loaded.contains(e.getKey())).map(Map.Entry::getValue).toList();
    synchronized(check) {
     if (check.answered) return;
-    check.verified = report.get("minecraft").getAsString().equals("1.20.1") && missing.isEmpty();
+    check.verified = report.get("minecraft").getAsString().equals("26.3") && missing.isEmpty();
     check.answered = true;
    }
    if (check.verified) player.sendMessage(Component.text("KiwyClub • Сборка проверена. Survival и PvP доступны.", ClubStyle.GREEN));

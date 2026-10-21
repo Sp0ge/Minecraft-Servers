@@ -10,7 +10,7 @@ from voice_config import public_host
 voice_host=public_host(os.getenv('VOICE_PUBLIC_HOST',''),os.getenv('VOICE_PUBLIC_PORT','24454'))
 (voice/'voicechat-proxy.properties').write_text('port=24454\nbind_address=0.0.0.0\nvoice_host='+voice_host+'\nallow_pings=true\n')
 via=p/'plugins/viaversion/config.yml';via.parent.mkdir(exist_ok=True)
-block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 763\n  parkour: 777\n  pvp: 763\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
+block='velocity-servers:\n  default: 777\n  lobby: 774\n  pillars: 774\n  survival: 777\n  parkour: 777\n  pvp: 777\n'+''.join('  pillars_'+str(i)+': 773\n' for i in range(1,6))
 text=via.read_text() if via.exists() else ''
 if 'velocity-servers:' in text:text=re.sub(r'(?m)^velocity-servers:\n(?:[ \t]+[^\n]*\n)*',block,text)
 else:text+='\n'+block

@@ -164,7 +164,7 @@ public class NetworkProxy {
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
-    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","opac","oclaims","oparties"));
+    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));
     if(server.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
     if(server.equals("pvp"))result.add("pvpleave");
     if(server.startsWith("pillars_"))result.add("trigger");
@@ -232,7 +232,7 @@ public class NetworkProxy {
       try{event.setResult(ServerPreConnectEvent.ServerResult.allowed(voiceReady(name)));}
       catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Лобби и голосовой чат готовятся. Подключитесь снова через несколько секунд.");log.warn("Lobby voice route unavailable: {}",e.toString());}
     });
-    if(Set.of("survival","pvp").contains(name)&&(p.getProtocolVersion().getProtocol()!=763||modpack==null||!modpack.verified(p))){event.setResult(ServerPreConnectEvent.ServerResult.denied());ModpackGate.download(p,"Для Survival и PvP нужна проверенная сборка KiwyClub Fabric 1.20.1.");return null;}
+    if(Set.of("survival","pvp").contains(name)&&(p.getProtocolVersion().getProtocol()!=777||modpack==null||!modpack.verified(p))){event.setResult(ServerPreConnectEvent.ServerResult.denied());ModpackGate.download(p,"Для Survival и PvP нужна проверенная сборка KiwyClub Fabric 26.3.");return null;}
     return EventTask.async(()->{
       if(!auth(p)||drained.contains(name)){event.setResult(ServerPreConnectEvent.ServerResult.denied());message(p,"Вход закрыт: нужна авторизация или сервер на обслуживании.");return;}
       if(name.equals("pvp"))try{if(!call("pvp:8081","/duel/allowed?uuid="+p.getUniqueId()).get("allowed").getAsBoolean())event.setResult(ServerPreConnectEvent.ServerResult.denied());}catch(Exception e){event.setResult(ServerPreConnectEvent.ServerResult.denied());}
