@@ -73,6 +73,8 @@ if role in ('lobby','parkour','pillars'):bukkit+='ticks-per:\n  autosave: 0\n'
 (root/'bukkit.yml').write_text(bukkit)
 (root/'server.properties').write_text('''server-port=25565
 online-mode=false
+white-list=false
+enforce-whitelist=false
 enforce-secure-profile=false
 level-name=world
 level-seed='''+seed+'''
