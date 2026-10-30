@@ -23,7 +23,7 @@ python3 - "$ROOT/network-sources.tar.gz" "$SOURCE_ROOT" <<'PY'
 import sys,tarfile,hashlib
 from pathlib import Path
 archive=Path(sys.argv[1]);target=Path(sys.argv[2])
-expected='8b472fea816c80d5efdab3f847f54641b5d4d2a945ac58bab88cad378078e1b9'
+expected='2a4d5b8089eaa1a5396faaf8500eabbc2be5c6a06c034cb9d66896d82bf32a32'
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:raise SystemExit('Повреждён архив исходников KiwyClub')
 with tarfile.open(archive) as t:
  for member in t.getmembers():
