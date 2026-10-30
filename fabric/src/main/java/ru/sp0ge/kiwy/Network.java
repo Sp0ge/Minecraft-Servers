@@ -57,10 +57,9 @@ public class Network implements ModInitializer {
  public final String role=System.getenv().getOrDefault("ROLE","survival"); public final boolean arena=role.equals("pvp");
  public String token,season; public final Gson json=new Gson(); final Random random=new Random();
  public final Set<UUID> pending=new HashSet<>(),admitted=new HashSet<>(),settled=new HashSet<>();
- final Map<UUID,Request> teleports=new HashMap<>(); final Map<UUID,Integer> scatterAttempts=new HashMap<>();
+ final Map<UUID,Integer> scatterAttempts=new HashMap<>();
  ChunkPreparation chunks; public Duel duels; HttpServer http; ExecutorService executor; public boolean accepting=true,visited=false;
  volatile String snapshot="{}"; long tickStart; final ArrayDeque<Double> ticks=new ArrayDeque<>(); final ArrayDeque<Long> tickEnds=new ArrayDeque<>(); int counter;
- record Request(UUID sender,long expires){}
  public void onInitialize(){INSTANCE=this;
   ServerLifecycleEvents.SERVER_STARTED.register(s->{server=s;try{
    token=Files.readString(Path.of("/secrets/api-token")).trim();season=JsonParser.parseString(Files.readString(Path.of("season.json"))).getAsJsonObject().get("id").getAsString();
@@ -74,7 +73,7 @@ public class Network implements ModInitializer {
   ServerTickEvents.START_SERVER_TICK.register(s->tickStart=System.nanoTime());
   ServerTickEvents.END_SERVER_TICK.register(s->{ticks.add((System.nanoTime()-tickStart)/1000000.0);if(ticks.size()>1200)ticks.remove();tickEnds.add(System.nanoTime());if(tickEnds.size()>1200)tickEnds.remove();if(duels==null)return;
    for(UUID id:new ArrayList<>(pending)){ServerPlayer p=s.getPlayerList().getPlayer(id);if(p==null){pending.remove(id);continue;}scatter(p);break;}
-   duels.tick();if(counter%200==199&&chunks!=null)chunks.tick();if(++counter%10==0)status();if(counter%200==0)teleports.entrySet().removeIf(e->e.getValue().expires<System.currentTimeMillis());
+   duels.tick();if(counter%200==199&&chunks!=null)chunks.tick();if(++counter%10==0)status();
   });
   ServerPlayConnectionEvents.JOIN.register((h,sender,s)->{ServerPlayer p=h.player;visited=true;if(chunks!=null)chunks.pause();
    if(!admitted.remove(p.getUUID())||!accepting){h.disconnect(Component.literal("Вход доступен через KiwyClub Velocity после авторизации."));return;}
@@ -99,26 +98,16 @@ public class Network implements ModInitializer {
    }server.sendSystemMessage(formatted);return false;
   });
   CommandRegistrationCallback.EVENT.register((dispatcher,access,env)->{
-   for(String name:List.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny","pvpleave")){
+   for(String name:arena?List.of("pvpleave"):List.<String>of()){
     var node=Commands.literal(name).requires(source->source.getEntity() instanceof ServerPlayer p&&(admin(source)||permitted(p,name))).executes(c->{command(c.getSource().getPlayerOrException(),name,null);return 1;});
-    if(name.equals("tpa")||name.equals("pvp"))node.then(Commands.argument("player",StringArgumentType.word()).suggests((ctx,b)->{for(ServerPlayer p:ctx.getSource().getServer().getPlayerList().getPlayers())b.suggest(p.getPlainTextName());return b.buildFuture();}).executes(c->{command(c.getSource().getPlayerOrException(),name,StringArgumentType.getString(c,"player"));return 1;}));dispatcher.register(node);
+    dispatcher.register(node);
    }
   });
  }
  boolean safelyMissingBed(ServerPlayer p){if(p.getRespawnConfig()==null)return true;var data=p.getRespawnConfig().respawnData();ServerLevel w=server.getLevel(data.dimension());return w==null||!(w.getBlockState(data.pos()).getBlock() instanceof BedBlock)&&!w.getBlockState(data.pos()).is(Blocks.RESPAWN_ANCHOR);}
  public boolean frozen(ServerPlayer p){return pending.contains(p.getUUID())||(!arena&&duels!=null&&duels.locked.containsKey(p.getUUID()));}
- public Set<String> commands(){Set<String> roots=new HashSet<>(Set.of("help","server","voicechat"));if(arena)roots.add("pvpleave");else roots.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));return roots;}
- void command(ServerPlayer p,String name,String otherName){
-  if(duels.command(p,name,otherName))return;if(arena)return;if(frozen(p)){say(p,"Подождите завершения подготовки.");return;}
-  switch(name){
-   case "home"->{if(p.getRespawnConfig()==null||safelyMissingBed(p)){say(p,"Дом не задан или кровать уничтожена: поспите в кровати.");return;}
-    var data=p.getRespawnConfig().respawnData();ServerLevel w=server.getLevel(data.dimension());if(!(w.getBlockState(data.pos()).getBlock() instanceof BedBlock)){say(p,"Дом доступен только у кровати.");return;}
-    var transition=p.findRespawnPositionAndUseSpawnBlock(false,net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);if(transition==null){say(p,"Возле кровати нет безопасного места.");return;}p.teleport(transition);}
-
-   case "tpa"->{ServerPlayer other=server.getPlayerList().getPlayerByName(otherName==null?"":otherName);if(other==null||other==p||frozen(other)){say(p,"/tpa <игрок на survival>");return;}teleports.put(other.getUUID(),new Request(p.getUUID(),System.currentTimeMillis()+60000));say(other,p.getPlainTextName()+" просит телепортироваться: /tpaccept или /tpdeny (60 секунд).");say(p,"Запрос отправлен.");}
-   case "tpaccept","tpdeny"->{Request r=teleports.remove(p.getUUID());ServerPlayer source=r==null?null:server.getPlayerList().getPlayer(r.sender);if(r==null||source==null||r.expires<System.currentTimeMillis()||frozen(source)){say(p,"Нет активного запроса.");return;}if(name.equals("tpaccept"))Network.teleport(source,p.level(),p.getX(),p.getY(),p.getZ(),p.getYRot(),p.getXRot());else say(source,"Запрос отклонён.");}
-  }
- }
+ public Set<String> commands(){Set<String> roots=new HashSet<>(Set.of("help","server","voicechat"));if(arena)roots.add("pvpleave");return roots;}
+ void command(ServerPlayer p,String name,String otherName){if(arena)duels.command(p,name,otherName);}
  void scatter(ServerPlayer p){ServerLevel w=server.overworld();BlockPos origin=w.getRespawnData().pos();int x=((origin.getX()>>4)-32+random.nextInt(64))*16+random.nextInt(16),z=((origin.getZ()>>4)-32+random.nextInt(64))*16+random.nextInt(16);
   w.getChunk(x>>4,z>>4);int y=w.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);BlockPos feet=new BlockPos(x,y,z);BlockState ground=w.getBlockState(feet.below());
   boolean safe=ground.isSolidRender()&&ground.getFluidState().isEmpty()&&!ground.is(Blocks.MAGMA_BLOCK)&&!ground.is(Blocks.CACTUS)&&w.getBlockState(feet).isAir()&&w.getBlockState(feet.above()).isAir();
@@ -162,6 +151,7 @@ public class Network implements ModInitializer {
   // Set only the managed group, preserving all pre-existing administrator groups.
   var lp=LuckPermsProvider.get();var manager=lp.getGroupManager();
   var group=manager.createAndLoadGroup("kiwy-player").join();
+  for(String command:List.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"))group.data().add(net.luckperms.api.node.Node.builder("kiwy.command."+command).value(false).build());
   for(String command:commands())group.data().add(net.luckperms.api.node.Node.builder("kiwy.command."+command).value(true).build());
   for(String node:List.of("voicechat.listen","voicechat.speak","voicechat.groups"))group.data().add(net.luckperms.api.node.Node.builder(node).value(true).build());
   for(String node:List.of("luckperms.*","minecraft.command.*","chunky.*","spark.*","kiwy.admin"))group.data().add(net.luckperms.api.node.Node.builder(node).value(false).build());

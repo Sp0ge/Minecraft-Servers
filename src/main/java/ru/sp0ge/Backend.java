@@ -83,7 +83,7 @@ public class Backend extends JavaPlugin implements Listener {
       w.setGameRule(GameRule.RANDOM_TICK_SPEED,0); w.setGameRule(GameRule.DO_FIRE_TICK,false);
       w.setPVP(false);w.getWorldBorder().setCenter(100,120);w.getWorldBorder().setSize(256);
     });
-    if(role.equals("lobby"))getServer().getScheduler().runTaskTimer(this,()->getServer().getOnlinePlayers().forEach(this::lobbyKit),40,20);
+
     getServer().getScheduler().runTaskTimer(this,()-> {
       List<String> ids=getServer().getOnlinePlayers().stream().map(p->p.getUniqueId().toString()).toList();
       boolean open=accepting;
@@ -132,7 +132,7 @@ public class Backend extends JavaPlugin implements Listener {
               parkour.renew();response.complete(json.toJson(parkour.course));
             } else if(path.equals("/admit") && exchange.getRequestMethod().equals("POST") && Set.of("survival","parkour","pvp").contains(role)) {
               UUID id=UUID.fromString(exchange.getRequestURI().getQuery().replace("uuid=",""));
-              getServer().getOfflinePlayer(id).setWhitelisted(true);response.complete("{}");
+              response.complete("{}"); // Proxy authorization does not use the vanilla whitelist.
             } else if(path.equals("/player")) {
               UUID id=UUID.fromString(exchange.getRequestURI().getQuery().replace("uuid=",""));Player p=getServer().getPlayer(id);
               if(p==null)throw new IllegalStateException("Player not joined");Location l=p.getLocation();
@@ -175,9 +175,9 @@ public class Backend extends JavaPlugin implements Listener {
   void reply(HttpExchange x,int code,String s)throws java.io.IOException{byte[] b=s.getBytes(StandardCharsets.UTF_8);x.sendResponseHeaders(code,b.length);x.getResponseBody().write(b);x.close();}
   public void onDisable(){if(http!=null)http.stop(0);if(httpExecutor!=null)httpExecutor.shutdownNow();}
   @EventHandler public void join(PlayerJoinEvent e){visited=true;if(role.equals("lobby")){
-    Player p=e.getPlayer();p.teleport(getServer().getWorlds().getFirst().getSpawnLocation());p.setGameMode(GameMode.ADVENTURE);
+    Player p=e.getPlayer();lobbyKit(p);p.teleport(getServer().getWorlds().getFirst().getSpawnLocation());p.setGameMode(GameMode.ADVENTURE);
     for(Player other:getServer().getOnlinePlayers())if(other!=p){p.showPlayer(this,other);other.showPlayer(this,p);}
-    getServer().getScheduler().runTaskLater(this,()->lobbyKit(p),40);
+    getServer().getScheduler().runTaskLater(this,()->{if(p.isOnline())lobbyKit(p);},40);
     p.sendMessage("§a§lKiwyClub §8» §fДобро пожаловать в клуб!");
     p.sendMessage("§7Войди через §a/register §7или §a/login§7. Книга и §a/help §7помогут выбрать режим.");
   }}
@@ -188,14 +188,16 @@ public class Backend extends JavaPlugin implements Listener {
     meta.lore(Arrays.stream(description).map(line->Component.text(line,NamedTextColor.GRAY).decoration(TextDecoration.ITALIC,false)).toList());
     item.setItemMeta(meta);return item;
   }
-  void lobbyKit(Player p){p.getInventory().setItem(0,guide());p.getInventory().setItem(4,item(Material.COMPASS,"Выбор режима",NamedTextColor.GREEN,"KiwyClub","Нажми, чтобы выбрать приключение"));}
+  void lobbyKit(Player p){p.getInventory().clear();p.getEnderChest().clear();p.setItemOnCursor(null);p.getInventory().setHeldItemSlot(0);p.getInventory().setItem(0,guide());p.getInventory().setItem(4,item(Material.COMPASS,"Выбор режима",NamedTextColor.GREEN,"KiwyClub","Нажми, чтобы выбрать приключение"));}
+  @EventHandler(priority=EventPriority.HIGHEST) public void lobbyQuit(PlayerQuitEvent e){if(role.equals("lobby")){e.getPlayer().getInventory().clear();e.getPlayer().getEnderChest().clear();e.getPlayer().setItemOnCursor(null);}}
+  @EventHandler(ignoreCancelled=true) public void lobbyPickup(org.bukkit.event.entity.EntityPickupItemEvent e){if(role.equals("lobby")&&e.getEntity() instanceof Player)e.setCancelled(true);}
   @EventHandler public void drop(PlayerDropItemEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void drag(org.bukkit.event.inventory.InventoryDragEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   @EventHandler public void damage(EntityDamageEvent e){if(role.equals("lobby"))e.setCancelled(true);}
   Set<String> playerCommands(){
     Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(role.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
-    if(role.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));
+
     if(role.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
     if(role.equals("pvp"))result.add("pvpleave");
     if(role.equals("pillars"))result.add("trigger");return result;
@@ -231,35 +233,9 @@ public class Backend extends JavaPlugin implements Listener {
   public boolean onCommand(CommandSender sender,Command cmd,String label,String[] args){
     if(!(sender instanceof Player p))return false;
     if(parkour!=null&&(cmd.getName().equals("checkpoint")||cmd.getName().equals("restart"))){parkour.back(p,cmd.getName().equals("restart"));return true;}
+    if(role.equals("survival"))return false;
     if(duels!=null&&duels.command(p,cmd.getName(),args))return true;
     if(cmd.getName().equals("arena")){if(args.length==1){accepting=args[0].equals("open");p.sendMessage("Набор игроков: "+accepting);}return true;}
-    if(!role.equals("survival")){p.sendMessage("Команда доступна на survival.");return true;}
-    switch(cmd.getName()){
-      case "home" -> {
-        Location bed=p.getRespawnLocation(false);
-        if(bed==null){p.sendMessage("Дом не задан: поспите в кровати.");return true;}
-        Block b=bed.getBlock();
-        if(!(b.getBlockData() instanceof Bed)){p.sendMessage("Кровать отсутствует.");return true;}
-        Location safe=null;
-        outer:for(int y=0;y<=1;y++)for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++){
-          Block feet=b.getRelative(x,y,z);
-          if(feet.isPassable()&&feet.getRelative(0,1,0).isPassable()&&feet.getRelative(0,-1,0).getType().isSolid()
-             &&!hazard(feet)&&!hazard(feet.getRelative(0,1,0))&&!hazard(feet.getRelative(0,-1,0))){
-            safe=feet.getLocation().add(.5,0,.5);break outer;
-          }
-        }
-        if(safe==null)p.sendMessage("Возле кровати нет безопасного места.");else p.teleportAsync(safe);return true;
-      }
-      case "tpa" -> {Player target=args.length==1?getServer().getPlayerExact(args[0]):null;
-        if(target==null||target==p){p.sendMessage("Используйте /tpa <игрок на survival>.");return true;}
-        requests.put(target.getUniqueId(),new Request(p.getUniqueId(),System.currentTimeMillis()+60000));
-        target.sendMessage(p.getName()+" просит телепортироваться: /tpaccept или /tpdeny (60 секунд).");p.sendMessage("Запрос отправлен.");return true;
-      }
-      case "tpaccept","tpdeny" -> {Request r=requests.remove(p.getUniqueId());
-        Player source=r==null?null:getServer().getPlayer(r.sender());
-        if(r==null||source==null||r.expires()<System.currentTimeMillis()){p.sendMessage("Нет активного запроса.");return true;}
-        if(cmd.getName().equals("tpaccept")){source.teleportAsync(p.getLocation());p.sendMessage("Запрос принят.");}else source.sendMessage("Запрос отклонён.");return true;
-      }
-    } return false;
+    return false;
   }
 }
