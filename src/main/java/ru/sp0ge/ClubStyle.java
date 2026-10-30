@@ -33,9 +33,9 @@ final class ClubStyle {
   if(topic.equals("main")){
    p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));
    text(p,"Выбери раздел выше — или нажми команду ниже.");section(p,"Твой режим");
-   command(p,"/server survival","свой мир, дом, друзья и дуэли");command(p,"/server pillars","битвы на столбах, до 16 игроков");
+   command(p,"/server survival","ванильное выживание с красивой генерацией");command(p,"/server pillars","битвы на столбах, до 16 игроков");
    command(p,"/server parkour","новая трасса каждый час и после победы");command(p,"/server lobby","лобби, компас и книга со справкой");
-   text(p,"PvP начинается из Survival: /pvp <игрок>.");command(p,"/voicechat","голосовой чат во всех режимах; меню также по V");text(p,"Для голоса нужен мод Simple Voice Chat на клиенте.");command(p,"/help all","все команды и правила");text(p,"В сети до 64 игроков. Книга доступна в лобби.");
+   text(p,"В Survival нет команд дома, телепортации по запросу и вызова на дуэль.");command(p,"/voicechat","голосовой чат во всех режимах; меню также по V");text(p,"Для голоса нужен мод Simple Voice Chat на клиенте.");command(p,"/help all","все команды и правила");text(p,"В сети до 64 игроков. Книга доступна в лобби.");
   }
   if(topic.equals("account")||topic.equals("all")){
    command(p,"/voicechat","голосовой чат во всех режимах; меню также по V");
@@ -54,8 +54,7 @@ final class ClubStyle {
   }
   if(topic.equals("survival")||topic.equals("all")){
    p.sendMessage(Component.text("  [Скачать сборку KiwyClub]",GREEN).clickEvent(ClickEvent.openUrl(ModpackGate.URL)));
-   section(p,"Survival · Fabric 26.3");text(p,"Для Survival и PvP нужна клиентская сборка KiwyClub.");command(p,"/server survival","перейти в выживание");command(p,"/home","к текущей кровати; дом только один");
-   command(p,"/tpa <игрок>","попросить телепортацию на 60 секунд");command(p,"/tpaccept","принять запрос");command(p,"/tpdeny","отклонить запрос");
+   section(p,"Survival · Fabric 26.3");text(p,"Для Survival и PvP нужна клиентская сборка KiwyClub.");command(p,"/server survival","перейти в выживание");text(p,"Ванильное выживание без /home, /tpa и команд вызова на дуэль.");
    text(p,"Первый спаун: квадрат 64×64 чанка. Чат: радиус 128 блоков.");text(p,"Входы и смерти видны всему Survival.");
    text(p,"Перезапуск в 05:00 МСК; предупреждения за 20/10/5 минут.");text(p,"Вайп каждые 3 месяца: новый сид, мир и инвентарь.");
   }
@@ -69,8 +68,7 @@ final class ClubStyle {
    text(p,"Длинные и диагональные прыжки, высота и лёд; сложность растёт.");text(p,"Точки по порядку каждые 10 прыжков. Падение — возврат; голод отключён.");text(p,"Новая трасса каждый час и после победы; все начинают её заново.");text(p,"Отдельной квоты нет; действует общий предел сети 64.");
   }
   if(topic.equals("pvp")||topic.equals("all")){
-   section(p,"PvP · вызови соперника из Survival");command(p,"/pvp <игрок>","отправить вызов на 60 секунд");command(p,"/pvpaccept","принять вызов");command(p,"/pvpdeny","отклонить вызов");command(p,"/pvpleave","сдаться на арене и вернуться");
-   text(p,"Поле 3×3 чанка со стеной, случайным рельефом и укрытиями.");text(p,"Новая карта перед каждой дуэлью; бой до 10 минут с копиями вещей.");text(p,"После смерти, сдачи или выхода оба вернутся в Survival.");text(p,"Исходный инвентарь восстановится целиком: расходники и износ тоже.");text(p,"Победу увидит вся сеть KiwyClub.");
+   section(p,"PvP");text(p,"Вызовы на дуэль из Survival отключены.");command(p,"/pvpleave","вернуться из уже начатой дуэли");
   }
   if(!topic.equals("main"))p.sendMessage(Component.text("\n  ").append(button("Все разделы","main")).append(Component.text("  /help — главное меню",MUTED)));
   p.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━\n",LINE));

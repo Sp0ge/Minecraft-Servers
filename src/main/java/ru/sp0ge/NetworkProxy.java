@@ -164,7 +164,7 @@ public class NetworkProxy {
   Set<String> commands(Player p){
     String server=current(p);Set<String> result=new HashSet<>(Set.of("server","help","voicechat"));
     if(server.equals("lobby"))result.addAll(Set.of("register","login","logout","changepassword"));
-    if(server.equals("survival"))result.addAll(Set.of("home","tpa","tpaccept","tpdeny","pvp","pvpaccept","pvpdeny"));
+
     if(server.equals("parkour"))result.addAll(Set.of("checkpoint","restart"));
     if(server.equals("pvp"))result.add("pvpleave");
     if(server.startsWith("pillars_"))result.add("trigger");
